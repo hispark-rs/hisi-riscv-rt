@@ -1,0 +1,31 @@
+[package]
+name = "ws63-rt"
+version = "0.1.0"
+edition = "2024"
+description = "Runtime support for HiSilicon WS63 (RISC-V RV32IMFC_Zicsr) — startup, interrupt vectors, linker script"
+license = "MIT"
+repository = "https://github.com/sanchuanhehe/ws63-rt"
+keywords = ["ws63", "hisilicon", "riscv", "embedded", "runtime"]
+categories = ["embedded", "no-std", "hardware-support"]
+
+[dependencies]
+riscv = "0.13"
+riscv-rt = "0.14"
+ws63-pac = { version = "0.1", git = "https://github.com/sanchuanhehe/ws63-pac" }
+critical-section = "1"
+
+[features]
+default = []
+# Enable default panic handler (loop forever)
+defmt-impl = ["defmt"]
+defmt = ["dep:defmt"]
+
+[build-dependencies]
+
+[profile.release]
+opt-level = "s"
+lto = true
+debug = true
+
+[profile.dev]
+opt-level = "s"
