@@ -11,14 +11,11 @@ categories = ["embedded", "no-std", "hardware-support"]
 [dependencies]
 riscv = "0.13"
 riscv-rt = "0.14"
-ws63-pac = { version = "0.1", git = "https://github.com/sanchuanhehe/ws63-pac" }
+ws63-pac = { path = "../ws63-pac" }
 critical-section = "1"
 
 [features]
 default = []
-# Enable default panic handler (loop forever)
-defmt-impl = ["defmt"]
-defmt = ["dep:defmt"]
 
 [build-dependencies]
 
