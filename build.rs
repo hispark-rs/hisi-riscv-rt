@@ -39,11 +39,8 @@ fn main() {
     }
 
     // Set RISC-V base ISA for riscv-rt (rv32i — no atomic extension)
-    println!("cargo:rustc-cfg=riscv32");
-    println!("cargo:rustc-cfg=riscv_base_isa=\"rv32i\"");
     println!("cargo:rustc-env=RISCV_RT_BASE_ISA=rv32i");
 
-    // Flag that we're targeting WS63
-    println!("cargo:rustc-cfg=target_arch=\"riscv32\"");
+    // Custom cfg for WS63-specific code
     println!("cargo:rustc-cfg=target_chip=\"ws63\"");
 }

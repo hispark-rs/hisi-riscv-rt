@@ -13,32 +13,26 @@
 
 use core::arch::asm;
 
-/// FPU initial state (mstatus FS field = 0b11 = Dirty).
-const MSTATUS_FS_DIRTY: u32 = 0x00006000;
-
 /// Called by startup assembly after basic CPU initialization.
 ///
 /// # Safety
 /// Called only once at boot, before main().
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn runtime_init() -> ! {
     // Configure caches
-    cpu_cache_init();
+    unsafe { cpu_cache_init() };
 
     // Relocate sections from flash to RAM
-    relocate_data();
+    unsafe { relocate_data() };
 
     // Zero BSS
-    zero_bss();
-
-    // Configure PMP regions if needed
-    // pmp_init();
+    unsafe { zero_bss() };
 
     // Call user main - this never returns
-    extern "Rust" {
+    unsafe extern "Rust" {
         fn main() -> !;
     }
-    main();
+    unsafe { main() };
 }
 
 /// Enable processor caches.
@@ -52,10 +46,12 @@ unsafe fn cpu_cache_init() {
     // Enable I-cache via custom CSR
     // CSR 0x7C0: I-cache control
     // bit 0: enable, bit 1: invalidate
-    asm!(
-        "csrwi 0x7C0, 0b11",  // Enable + invalidate I-cache
-        "csrwi 0x7C1, 0b11",  // Enable + invalidate D-cache
-    );
+    unsafe {
+        asm!(
+            "csrwi 0x7C0, 0b11",  // Enable + invalidate I-cache
+            "csrwi 0x7C1, 0b11",  // Enable + invalidate D-cache
+        );
+    }
 }
 
 /// Copy initialized data sections from flash to RAM.
@@ -63,7 +59,7 @@ unsafe fn cpu_cache_init() {
 /// Copies ROM data to DTCM, TCM text/data to ITCM/DTCM,
 /// and SRAM text/data to SRAM.
 unsafe fn relocate_data() {
-    extern "C" {
+    unsafe extern "C" {
         // ROM data: flash → DTCM
         static mut __rom_data_begin__: u32;
         static mut __rom_data_end__: u32;
@@ -102,78 +98,82 @@ unsafe fn relocate_data() {
         static mut __bss_end__: u32;
     }
 
-    // Copy ROM data to DTCM
-    let count = &raw const __rom_data_end__ as usize - &raw const __rom_data_begin__ as usize;
-    if count > 0 {
-        core::ptr::copy_nonoverlapping(
-            &raw const __rom_data_load__ as *const u8,
-            &raw mut __rom_data_begin__ as *mut u8,
-            count,
-        );
-    }
+    unsafe {
+        // Copy ROM data to DTCM
+        let count = &raw const __rom_data_end__ as usize - &raw const __rom_data_begin__ as usize;
+        if count > 0 {
+            core::ptr::copy_nonoverlapping(
+                &raw const __rom_data_load__ as *const u8,
+                &raw mut __rom_data_begin__ as *mut u8,
+                count,
+            );
+        }
 
-    // Zero ROM BSS in DTCM
-    let bss_count = &raw const __rom_bss_end__ as usize - &raw const __rom_bss_begin__ as usize;
-    if bss_count > 0 {
-        core::ptr::write_bytes(&raw mut __rom_bss_begin__ as *mut u8, 0, bss_count);
-    }
+        // Zero ROM BSS in DTCM
+        let bss_count = &raw const __rom_bss_end__ as usize - &raw const __rom_bss_begin__ as usize;
+        if bss_count > 0 {
+            core::ptr::write_bytes(&raw mut __rom_bss_begin__ as *mut u8, 0, bss_count);
+        }
 
-    // Copy TCM text to ITCM
-    let count = &raw const __tcm_text_end__ as usize - &raw const __tcm_text_begin__ as usize;
-    if count > 0 {
-        core::ptr::copy_nonoverlapping(
-            &raw const __tcm_text_load__ as *const u8,
-            &raw mut __tcm_text_begin__ as *mut u8,
-            count,
-        );
-    }
+        // Copy TCM text to ITCM
+        let count = &raw const __tcm_text_end__ as usize - &raw const __tcm_text_begin__ as usize;
+        if count > 0 {
+            core::ptr::copy_nonoverlapping(
+                &raw const __tcm_text_load__ as *const u8,
+                &raw mut __tcm_text_begin__ as *mut u8,
+                count,
+            );
+        }
 
-    // Copy TCM data to DTCM
-    let count = &raw const __tcm_data_end__ as usize - &raw const __tcm_data_begin__ as usize;
-    if count > 0 {
-        core::ptr::copy_nonoverlapping(
-            &raw const __tcm_data_load__ as *const u8,
-            &raw mut __tcm_data_begin__ as *mut u8,
-            count,
-        );
-    }
+        // Copy TCM data to DTCM
+        let count = &raw const __tcm_data_end__ as usize - &raw const __tcm_data_begin__ as usize;
+        if count > 0 {
+            core::ptr::copy_nonoverlapping(
+                &raw const __tcm_data_load__ as *const u8,
+                &raw mut __tcm_data_begin__ as *mut u8,
+                count,
+            );
+        }
 
-    // Zero TCM BSS in DTCM
-    let bss_count = &raw const __tcm_bss_end__ as usize - &raw const __tcm_bss_begin__ as usize;
-    if bss_count > 0 {
-        core::ptr::write_bytes(&raw mut __tcm_bss_begin__ as *mut u8, 0, bss_count);
-    }
+        // Zero TCM BSS in DTCM
+        let bss_count = &raw const __tcm_bss_end__ as usize - &raw const __tcm_bss_begin__ as usize;
+        if bss_count > 0 {
+            core::ptr::write_bytes(&raw mut __tcm_bss_begin__ as *mut u8, 0, bss_count);
+        }
 
-    // Copy SRAM text to SRAM
-    let count = &raw const __sram_text_end__ as usize - &raw const __sram_text_begin__ as usize;
-    if count > 0 {
-        core::ptr::copy_nonoverlapping(
-            &raw const __sram_text_load__ as *const u8,
-            &raw mut __sram_text_begin__ as *mut u8,
-            count,
-        );
-    }
+        // Copy SRAM text to SRAM
+        let count = &raw const __sram_text_end__ as usize - &raw const __sram_text_begin__ as usize;
+        if count > 0 {
+            core::ptr::copy_nonoverlapping(
+                &raw const __sram_text_load__ as *const u8,
+                &raw mut __sram_text_begin__ as *mut u8,
+                count,
+            );
+        }
 
-    // Copy .data to SRAM
-    let count = &raw const __data_end__ as usize - &raw const __data_begin__ as usize;
-    if count > 0 {
-        core::ptr::copy_nonoverlapping(
-            &raw const __data_load__ as *const u8,
-            &raw mut __data_begin__ as *mut u8,
-            count,
-        );
+        // Copy .data to SRAM
+        let count = &raw const __data_end__ as usize - &raw const __data_begin__ as usize;
+        if count > 0 {
+            core::ptr::copy_nonoverlapping(
+                &raw const __data_load__ as *const u8,
+                &raw mut __data_begin__ as *mut u8,
+                count,
+            );
+        }
     }
 }
 
 /// Zero the BSS section in SRAM.
 unsafe fn zero_bss() {
-    extern "C" {
+    unsafe extern "C" {
         static mut __bss_begin__: u32;
         static mut __bss_end__: u32;
     }
 
-    let count = &raw const __bss_end__ as usize - &raw const __bss_begin__ as usize;
-    if count > 0 {
-        core::ptr::write_bytes(&raw mut __bss_begin__ as *mut u8, 0, count);
+    unsafe {
+        let count = &raw const __bss_end__ as usize - &raw const __bss_begin__ as usize;
+        if count > 0 {
+            core::ptr::write_bytes(&raw mut __bss_begin__ as *mut u8, 0, count);
+        }
     }
 }
