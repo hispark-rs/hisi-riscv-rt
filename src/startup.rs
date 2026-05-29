@@ -28,6 +28,20 @@ pub unsafe extern "C" fn runtime_init() -> ! {
     // Zero BSS
     unsafe { zero_bss() };
 
+    // Re-enable machine interrupts (disabled by startup.S for init)
+    // MIE bits 26-31: TIMER0, TIMER1, TIMER2, RTC, I2C0, I2C1
+    // Peripherals further enable their own interrupt sources via PLIC.
+    unsafe {
+        // Re-enable machine interrupts: MEIE(11) + MTIE(7) + MSIE(3)
+        // Use csrs with register (csrsi immediate is 5-bit only)
+        core::arch::asm!(
+            "li t0, 0x888",
+            "csrs mie, t0",
+            out("t0") _,
+            options(nomem, nostack),
+        );
+    }
+
     // Call user main - this never returns
     unsafe extern "Rust" {
         fn main() -> !;
