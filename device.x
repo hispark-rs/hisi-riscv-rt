@@ -12,6 +12,43 @@
 
 PROVIDE(DefaultHandler = default_handler);
 
+/* ── riscv-rt v0.14 default exception handlers ────────────────── */
+PROVIDE(SupervisorSoft = DefaultHandler);
+PROVIDE(MachineSoft = DefaultHandler);
+PROVIDE(SupervisorTimer = DefaultHandler);
+PROVIDE(MachineTimer = DefaultHandler);
+PROVIDE(SupervisorExternal = DefaultHandler);
+PROVIDE(MachineExternal = DefaultHandler);
+PROVIDE(InstructionMisaligned = DefaultHandler);
+PROVIDE(InstructionFault = DefaultHandler);
+PROVIDE(IllegalInstruction = DefaultHandler);
+PROVIDE(Breakpoint = DefaultHandler);
+PROVIDE(LoadMisaligned = DefaultHandler);
+PROVIDE(LoadFault = DefaultHandler);
+PROVIDE(StoreMisaligned = DefaultHandler);
+PROVIDE(StoreFault = DefaultHandler);
+PROVIDE(UserEnvCall = DefaultHandler);
+PROVIDE(SupervisorEnvCall = DefaultHandler);
+PROVIDE(MachineEnvCall = DefaultHandler);
+PROVIDE(InstructionPageFault = DefaultHandler);
+PROVIDE(LoadPageFault = DefaultHandler);
+PROVIDE(StorePageFault = DefaultHandler);
+
+/* ── riscv-rt v0.14 multi-hart / stack symbols ──────────────── */
+PROVIDE(_max_hart_id = 0);
+PROVIDE(_hart_stack_size = __stack_size);
+PROVIDE(_stack_start = __stack_top__);
+
+/* ── riscv-rt v0.14 data/bss linker symbols ──────────────────── */
+/* These map layout.ld's __data_begin__/__bss_begin__ naming
+   to riscv-rt's expected __sdata/__sbss naming. The actual values
+   come from layout.ld via PROVIDE fallback. */
+PROVIDE(__sidata = __data_load__);
+PROVIDE(__sdata   = __data_begin__);
+PROVIDE(__edata   = __data_end__);
+PROVIDE(__sbss    = __bss_begin__);
+PROVIDE(__ebss    = __bss_end__);
+
 /* MIE interrupt sources (6 entries, bits 26-31 in mie CSR) */
 PROVIDE(TIMER_INT0 = DefaultHandler);
 PROVIDE(TIMER_INT1 = DefaultHandler);

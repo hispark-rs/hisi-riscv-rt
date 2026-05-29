@@ -151,6 +151,9 @@ SECTIONS
     .data : ALIGN(8) {
         __data_load__ = LOADADDR(.data);
         __data_begin__ = .;
+        /* riscv-rt v0.14 .data symbols */
+        __sidata = __data_load__;
+        __sdata = .;
         *(.data .data.*)
         *(.got .got.*)
         *(.igot .igot.*)
@@ -158,16 +161,19 @@ SECTIONS
         *(.sdata .sdata.*)
         . = ALIGN(4);
         __data_end__ = .;
+        __edata = .;
     } > SRAM AT > PROGRAM
 
     /* BSS (zeroed at startup) */
     .bss (NOLOAD) : ALIGN(8) {
         __bss_begin__ = .;
+        __sbss = .;
         *(.bss .bss.*)
         *(.sbss .sbss.*)
         *(COMMON)
         . = ALIGN(4);
         __bss_end__ = .;
+        __ebss = .;
     } > SRAM
 
     /* ================================================================
@@ -185,6 +191,10 @@ SECTIONS
         . = . + __stack_size;          /* User/main stack */
         . = ALIGN(16);
         __stack_top__ = .;
+        /* riscv-rt v0.14 stack symbols (must be inside section for visibility) */
+        _stack_start = __stack_top__;
+        _max_hart_id = 0;
+        _hart_stack_size = __stack_size;
 
         __irq_stack_start__ = .;
         . = . + __irq_stack_size;       /* IRQ stack */

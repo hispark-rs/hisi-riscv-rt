@@ -9,34 +9,36 @@ use std::path::{Path, PathBuf};
 fn main() {
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
 
-    // Copy memory.x and layout.ld for the linker
+    // Copy linker scripts for the linker
     let memory_x = Path::new("memory.x");
     let layout_ld = Path::new("layout.ld");
     let device_x = Path::new("device.x");
+    let symbols_x = Path::new("riscv-rt-symbols.x");
 
     println!("cargo:rerun-if-changed=memory.x");
     println!("cargo:rerun-if-changed=layout.ld");
     println!("cargo:rerun-if-changed=device.x");
+    println!("cargo:rerun-if-changed=riscv-rt-symbols.x");
     println!("cargo:rerun-if-changed=asm/startup.S");
 
-    // Place linker scripts in OUT_DIR
-    fs::copy(memory_x, out_dir.join("memory.x")).expect("Failed to copy memory.x");
-    fs::copy(layout_ld, out_dir.join("layout.ld")).expect("Failed to copy layout.ld");
-    fs::copy(device_x, out_dir.join("device.x")).expect("Failed to copy device.x");
+    // Place linker scripts in OUT_DIR and use absolute paths
+    let layout_out = out_dir.join("layout.ld");
+    let memory_out = out_dir.join("memory.x");
+    let device_out = out_dir.join("device.x");
+    let symbols_out = out_dir.join("riscv-rt-symbols.x");
 
-    // Set linker script path for rustc
-    println!("cargo:rustc-link-arg=-Tlayout.ld");
-    println!("cargo:rustc-link-arg=-Tmemory.x");
-    println!("cargo:rustc-link-arg=-Tdevice.x");
+    fs::copy(memory_x, &memory_out).expect("Failed to copy memory.x");
+    fs::copy(layout_ld, &layout_out).expect("Failed to copy layout.ld");
+    fs::copy(device_x, &device_out).expect("Failed to copy device.x");
+    fs::copy(symbols_x, &symbols_out).expect("Failed to copy riscv-rt-symbols.x");
 
-    // Linker search path for OUT_DIR
-    println!("cargo:rustc-link-search={}", out_dir.display());
+    // Load linker scripts in order: layout first, then memory, then device, then symbols (LAST)
+    println!("cargo:rustc-link-arg=-T{}", layout_out.display());
+    println!("cargo:rustc-link-arg=-T{}", memory_out.display());
+    println!("cargo:rustc-link-arg=-T{}", device_out.display());
+    println!("cargo:rustc-link-arg=-T{}", symbols_out.display());
 
-    // Assembly file
-    let asm_path = Path::new("asm/startup.S");
-    if asm_path.exists() {
-        println!("cargo:rustc-link-arg={}", asm_path.display());
-    }
+    // (startup.S is now included via global_asm! in lib.rs)
 
     // Set RISC-V base ISA for riscv-rt (rv32i — no atomic extension)
     println!("cargo:rustc-env=RISCV_RT_BASE_ISA=rv32i");

@@ -36,6 +36,9 @@
 
 #![no_std]
 
+// Include assembly startup code via global_asm!
+core::arch::global_asm!(include_str!("../asm/startup.S"));
+
 pub mod startup;
 
 /// Re-export the PAC's interrupt types for user convenience.

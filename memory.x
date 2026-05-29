@@ -59,3 +59,26 @@ __stack_size = DEFINED(__stack_size) ? __stack_size : 0x2000;     /* 8KB user st
 __irq_stack_size = DEFINED(__irq_stack_size) ? __irq_stack_size : 0x800;   /* 2KB IRQ */
 __exc_stack_size = DEFINED(__exc_stack_size) ? __exc_stack_size : 0x800;   /* 2KB exception */
 __nmi_stack_size = DEFINED(__nmi_stack_size) ? __nmi_stack_size : 0x400;   /* 1KB NMI */
+
+/* ── riscv-rt v0.14 required symbols (MUST be before memory.x closes) ── */
+/* Stack: top of SRAM = 0xA00000 + 0x90000 = 0xA90000 */
+PROVIDE(_stack_start = ORIGIN(SRAM) + LENGTH(SRAM));
+PROVIDE(_max_hart_id = 0);
+PROVIDE(_hart_stack_size = 0x2000);
+
+/* Data/bss: these come from layout.ld section definitions.
+   The PROVIDE here is a fallback; layout.ld has the authoritative values. */
+PROVIDE(__sidata = 0);
+PROVIDE(__sdata = 0);
+PROVIDE(__edata = 0);
+PROVIDE(__sbss = 0);
+PROVIDE(__ebss = 0);
+
+/* ── riscv-rt v0.14 region aliases ──────────────────────────────── */
+REGION_ALIAS("REGION_TEXT", PROGRAM);
+REGION_ALIAS("REGION_RODATA", PROGRAM);
+REGION_ALIAS("REGION_DATA", SRAM);
+REGION_ALIAS("REGION_BSS", SRAM);
+REGION_ALIAS("REGION_STACK", SRAM);
+REGION_ALIAS("REGION_HEAP", SRAM);
+

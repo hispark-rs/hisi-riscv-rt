@@ -47,7 +47,7 @@ HandleReset:
     # ---- Enable FPU (FS = 0b11 = Dirty) ----
     li    t0, 0x00006000
     csrs  mstatus, t0
-    fssr  x0
+    csrwi fflags, 0              /* Clear FPU exception flags (LLVM-compatible) */
 
     # ---- Initialize global pointer ----
     .option push
@@ -432,6 +432,118 @@ local_interrupt_handler:
 #  Default handlers (weak — user can override)
 # ======================================================================
 .section .text.default_handlers, "ax"
+
+/* ── riscv-rt v0.14 required linker symbols ───────────────── */
+/* riscv-rt's assembly.rs references these as extern.         */
+/* We define them here as globals with sensible defaults.      */
+.global _max_hart_id
+_max_hart_id: .4byte 0
+
+.global _hart_stack_size
+_hart_stack_size: .4byte 0x2000
+
+.global _stack_start
+_stack_start: .4byte 0xA90000
+
+.global __sidata
+__sidata: .4byte 0
+
+.global __sdata
+__sdata: .4byte 0xA00000
+
+.global __edata
+__edata: .4byte 0xA00000
+
+.global __sbss
+__sbss: .4byte 0xA00000
+
+.global __ebss
+__ebss: .4byte 0xA00000
+
+/* ── riscv-rt v0.14 expected exception handler symbols ───── */
+/* These are extern-weak in riscv-rt's exceptions.rs.        */
+/* We provide default infinite-loop handlers.               */
+.global SupervisorSoft
+.weak SupervisorSoft
+SupervisorSoft: j .
+
+.global MachineSoft
+.weak MachineSoft
+MachineSoft: j .
+
+.global SupervisorTimer
+.weak SupervisorTimer
+SupervisorTimer: j .
+
+.global MachineTimer
+.weak MachineTimer
+MachineTimer: j .
+
+.global SupervisorExternal
+.weak SupervisorExternal
+SupervisorExternal: j .
+
+.global MachineExternal
+.weak MachineExternal
+MachineExternal: j .
+
+.global InstructionMisaligned
+.weak InstructionMisaligned
+InstructionMisaligned: j .
+
+.global InstructionFault
+.weak InstructionFault
+InstructionFault: j .
+
+.global IllegalInstruction
+.weak IllegalInstruction
+IllegalInstruction: j .
+
+.global Breakpoint
+.weak Breakpoint
+Breakpoint: j .
+
+.global LoadMisaligned
+.weak LoadMisaligned
+LoadMisaligned: j .
+
+.global LoadFault
+.weak LoadFault
+LoadFault: j .
+
+.global StoreMisaligned
+.weak StoreMisaligned
+StoreMisaligned: j .
+
+.global StoreFault
+.weak StoreFault
+StoreFault: j .
+
+.global UserEnvCall
+.weak UserEnvCall
+UserEnvCall: j .
+
+.global SupervisorEnvCall
+.weak SupervisorEnvCall
+SupervisorEnvCall: j .
+
+.global MachineEnvCall
+.weak MachineEnvCall
+MachineEnvCall: j .
+
+.global InstructionPageFault
+.weak InstructionPageFault
+InstructionPageFault: j .
+
+.global LoadPageFault
+.weak LoadPageFault
+LoadPageFault: j .
+
+.global StorePageFault
+.weak StorePageFault
+StorePageFault: j .
+
+/* ── Default handler (used by device.x PROVIDE entries) ──── */
 .weak default_handler
 default_handler:
     j .
