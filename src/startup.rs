@@ -48,8 +48,8 @@ unsafe fn cpu_cache_init() {
     // bit 0: enable, bit 1: invalidate
     unsafe {
         asm!(
-            "csrwi 0x7C0, 0b11",  // Enable + invalidate I-cache
-            "csrwi 0x7C1, 0b11",  // Enable + invalidate D-cache
+            "csrwi 0x7C0, 0b11", // Enable + invalidate I-cache
+            "csrwi 0x7C1, 0b11", // Enable + invalidate D-cache
         );
     }
 }
