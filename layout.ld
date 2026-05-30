@@ -196,20 +196,23 @@ SECTIONS
         _max_hart_id = 0;
         _hart_stack_size = __stack_size;
 
+        /* IRQ/exception/NMI stack reservations. The *_stack_top__ symbols are
+           NOT defined here: as a (NOLOAD) symbol-only region they get dropped by
+           --gc-sections, which left them undefined at link time. They are instead
+           defined as GC-safe top-level fallbacks in memory.x. Keep the reservation
+           so the space is accounted for. (To be unified in the interrupt rework —
+           ROADMAP phase 2.) */
         __irq_stack_start__ = .;
         . = . + __irq_stack_size;       /* IRQ stack */
         . = ALIGN(16);
-        __irq_stack_top__ = .;
 
         __exc_stack_start__ = .;
         . = . + __exc_stack_size;       /* Exception stack */
         . = ALIGN(16);
-        __exc_stack_top__ = .;
 
         __nmi_stack_start__ = .;
         . = . + __nmi_stack_size;       /* NMI stack */
         . = ALIGN(16);
-        __nmi_stack_top__ = .;
     } > SRAM
 
     /* Heap uses remaining SRAM */

@@ -9,9 +9,16 @@ keywords = ["ws63", "hisilicon", "riscv", "embedded", "runtime"]
 categories = ["embedded", "no-std", "hardware-support"]
 
 [dependencies]
-riscv = "0.13"
+# ws63-rt owns the single application hart, so it registers the global
+# critical-section impl for the whole firmware. This impl backs both
+# ws63-pac's `Peripherals::take()` and ws63-hal's portable-atomic polyfill
+# (the WS63 core has no atomic extension). Exactly one crate must enable this.
+riscv = { version = "0.13", features = ["critical-section-single-hart"] }
 riscv-rt = "0.14"
-ws63-pac = { path = "../ws63-pac" }
+# version + path: `path` is used for local/monorepo builds, `version` is required
+# for `cargo publish`. In the monorepo, the root [patch.crates-io] keeps this and
+# ws63-hal's registry dep resolved to the single local ws63-pac instance.
+ws63-pac = { version = "0.1", path = "../ws63-pac" }
 critical-section = "1"
 
 [features]

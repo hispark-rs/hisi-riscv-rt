@@ -394,7 +394,7 @@ mie_interrupt\n\()_handler:
     push_reg
     csrw mscratch, sp
     la   sp, __irq_stack_top__
-    call mie\()_interrupt_handler
+    call mie\n\()_interrupt_handler   # -> mie0_interrupt_handler .. mie5_interrupt_handler (weak defaults below)
     csrr sp, mscratch
     li   t0, 0x1880
     csrs mstatus, t0

@@ -4,21 +4,19 @@
   "data-layout": "e-m:e-p:32:32-i64:64-n32-S128",
   "eh-frame-header": false,
   "emit-debug-gdb-scripts": false,
-  "features": "+m,+f,+c,+zicsr,-a,-d,-e,-zicsr,-zifencei",
-  "is-builtin": false,
+  "features": "+m,+f,+c,+zicsr",
   "linker": "rust-lld",
-  "linker-flavor": "ld.lld",
-  "llvm-target": "riscv32-unknown-none-elf",
+  "linker-flavor": "gnu-lld",
+  "llvm-abiname": "ilp32f",
+  "llvm-target": "riscv32",
   "max-atomic-width": 0,
-  "os": "none",
+  "metadata": {
+    "description": "HiSilicon WS63 application core: RV32IMFC_Zicsr, hardware single-float (ilp32f), NO atomic ('a') extension",
+    "host_tools": false,
+    "std": false,
+    "tier": 3
+  },
   "panic-strategy": "abort",
   "relocation-model": "static",
-  "target-pointer-width": "32",
-  "vendor": "hisilicon",
-  "pre-link-args": {
-    "ld.lld": ["--gc-sections", "--defsym=__ram_size=0xA0000"]
-  },
-  "post-link-args": {
-    "ld.lld": ["--no-relax"]
-  }
+  "target-pointer-width": 32
 }

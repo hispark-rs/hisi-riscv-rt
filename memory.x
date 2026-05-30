@@ -66,6 +66,17 @@ PROVIDE(_stack_start = ORIGIN(SRAM) + LENGTH(SRAM));
 PROVIDE(_max_hart_id = 0);
 PROVIDE(_hart_stack_size = 0x2000);
 
+/* IRQ/exception/NMI stack tops.
+   layout.ld defines these inside the (NOLOAD) .stacks section, but those
+   defs can be dropped by --gc-sections; provide top-of-SRAM fallbacks so the
+   trap handlers in asm/startup.S always link. Stacks grow downward and are
+   carved below the user stack. (Used only on a taken trap; blinky never does.)
+   NOTE: the .stacks layout and these fallbacks should be unified in the
+   interrupt-subsystem rework — see ROADMAP phase 2. */
+__irq_stack_top__ = ORIGIN(SRAM) + LENGTH(SRAM) - __stack_size;
+__exc_stack_top__ = __irq_stack_top__ - __irq_stack_size;
+__nmi_stack_top__ = __exc_stack_top__ - __exc_stack_size;
+
 /* Data/bss: these come from layout.ld section definitions.
    The PROVIDE here is a fallback; layout.ld has the authoritative values. */
 PROVIDE(__sidata = 0);
