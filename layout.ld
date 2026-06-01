@@ -128,6 +128,23 @@ SECTIONS
         . = ALIGN(4);
     } > PROGRAM
 
+    /* Trap vector table + handlers. Placed explicitly (KEEP) so the vectored
+       table base is deterministically 64-byte aligned (mtvec is set to this base
+       in vectored mode — see asm/startup.S) and the per-entry `j` trampolines
+       stay contiguous + in range. Previously these were orphan sections, which
+       was fragile (alignment/range) and let --gc-sections drop the trampolines
+       and the trap-stack-top symbol references. `.trap` (the table) must be first. */
+    .trap : ALIGN(64) {
+        __trap_vector_base__ = .;
+        KEEP(*(.trap))
+        KEEP(*(.trap.exception .trap.exception.*))
+        KEEP(*(.trap.nmi))
+        KEEP(*(.trap.mie0 .trap.mie1 .trap.mie2 .trap.mie3 .trap.mie4 .trap.mie5))
+        KEEP(*(.trap.local))
+        KEEP(*(.trap.*))
+        . = ALIGN(4);
+    } > PROGRAM
+
     /* Flash text (main code executing from flash / XIP) */
     .text : ALIGN(8) {
         *(.text .text.*)
@@ -196,23 +213,27 @@ SECTIONS
         _max_hart_id = 0;
         _hart_stack_size = __stack_size;
 
-        /* IRQ/exception/NMI stack reservations. The *_stack_top__ symbols are
-           NOT defined here: as a (NOLOAD) symbol-only region they get dropped by
-           --gc-sections, which left them undefined at link time. They are instead
-           defined as GC-safe top-level fallbacks in memory.x. Keep the reservation
-           so the space is accounted for. (To be unified in the interrupt rework —
-           ROADMAP phase 2.) */
+        /* IRQ / exception / NMI stacks, carved downward from here (between the
+           user stack and the heap). The *_stack_top__ symbols (used by the trap
+           handlers in asm/startup.S, which switch sp to them) are defined HERE as
+           the single source of truth — they survive --gc-sections because the
+           KEEP'd .trap handlers reference them. The earlier top-of-SRAM fallbacks
+           in memory.x were removed: they pointed into the .heap region (a latent
+           trap-stack/heap overlap). Each stack grows down from its *_top__. */
         __irq_stack_start__ = .;
         . = . + __irq_stack_size;       /* IRQ stack */
         . = ALIGN(16);
+        __irq_stack_top__ = .;
 
         __exc_stack_start__ = .;
         . = . + __exc_stack_size;       /* Exception stack */
         . = ALIGN(16);
+        __exc_stack_top__ = .;
 
         __nmi_stack_start__ = .;
         . = . + __nmi_stack_size;       /* NMI stack */
         . = ALIGN(16);
+        __nmi_stack_top__ = .;
     } > SRAM
 
     /* Heap uses remaining SRAM */

@@ -36,8 +36,13 @@ HandleReset:
     li    t0, 0
     csrw  pmpcfg3, t0
 
-    # ---- Set trap vector base ----
+    # ---- Set trap vector base in VECTORED mode (mtvec[1:0] = 01) ----
+    # trap_vector is a per-cause jump table (entry 0 = exception, 26-31 = mie
+    # interrupts, 32-91 = local IRQs), so mtvec must select vectored mode or every
+    # interrupt would land on entry 0. The table is 64-byte aligned (see .trap +
+    # layout.ld), so BASE[1:0]=00 and `ori ,1` sets the mode bits cleanly.
     la    t0, trap_vector
+    ori   t0, t0, 1
     csrw  mtvec, t0
 
     # ---- Disable interrupts during init ----
