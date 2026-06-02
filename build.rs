@@ -27,7 +27,13 @@ fn main() {
     let device_out = out_dir.join("device.x");
     let symbols_out = out_dir.join("riscv-rt-symbols.x");
 
-    fs::copy(memory_x, &memory_out).expect("Failed to copy memory.x");
+    // memory.x is bundled only when the `bundled-memory-x` feature is on (default).
+    // A downstream binary with `default-features = false` supplies its own memory.x
+    // (on its own link-search path), so we must NOT also drop ours — that would put
+    // two `memory.x` on the path and make `INCLUDE memory.x` order-dependent.
+    if env::var_os("CARGO_FEATURE_BUNDLED_MEMORY_X").is_some() {
+        fs::copy(memory_x, &memory_out).expect("Failed to copy memory.x");
+    }
     fs::copy(layout_ld, &layout_out).expect("Failed to copy layout.ld");
     fs::copy(device_x, &device_out).expect("Failed to copy device.x");
     fs::copy(symbols_x, &symbols_out).expect("Failed to copy riscv-rt-symbols.x");

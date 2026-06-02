@@ -22,7 +22,15 @@ ws63-pac = { version = "0.1", path = "../ws63-pac" }
 critical-section = "1"
 
 [features]
-default = []
+# `bundled-memory-x` (default ON): ws63-rt ships a correct WS63 memory.x and puts
+# it on the linker search path, so downstream binaries link with zero config.
+# A binary that needs its OWN memory layout sets `default-features = false` on
+# ws63-rt and supplies its own memory.x (copy it to OUT_DIR + rustc-link-search in
+# its build.rs — see ws63-examples/custom_memory). That keeps exactly ONE memory.x
+# on the search path, so ws63-link.x's `INCLUDE memory.x` resolves deterministically
+# (no two-memory.x / link-order ambiguity, no MEMORY-region-redefined conflict).
+default = ["bundled-memory-x"]
+bundled-memory-x = []
 
 [build-dependencies]
 
