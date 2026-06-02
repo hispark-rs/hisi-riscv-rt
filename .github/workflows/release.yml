@@ -1,0 +1,56 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  TARGET: riscv32imfc-unknown-none-elf
+
+# ws63-rt is riscv-only (it global_asm!s the startup and depends on ws63-pac via
+# `path = "../ws63-pac"`), so — unlike pac/hal which check on host stable — both
+# jobs need the custom ws63 toolchain (riscv32imfc builtin) and a sibling
+# ws63-pac checkout. crates.io publishing is owned by THIS repo (not the ws63-rs
+# monorepo): tag `vX.Y.Z` here to release ws63-rt X.Y.Z.
+jobs:
+  verify:
+    name: Verify (riscv32imfc)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ws63 toolchain
+        run: |
+          curl -fsSL --retry 3 -o tc.tar.gz \
+            https://github.com/sanchuanhehe/ws63-rust-toolchain/releases/download/v1.96.0/ws63-rust-1.96.0-x86_64-unknown-linux-gnu.tar.gz
+          mkdir -p "$RUNNER_TEMP/ws63" && tar -C "$RUNNER_TEMP/ws63" -xzf tc.tar.gz
+          rustup toolchain link ws63 "$RUNNER_TEMP/ws63/stage2"
+          rustc +ws63 --version
+      - name: Checkout sibling ws63-pac (../ws63-pac path dependency)
+        run: git clone --depth 1 https://github.com/sanchuanhehe/ws63-pac ../ws63-pac
+      - name: Check
+        run: cargo +ws63 check --target "$TARGET"
+      - name: Clippy
+        run: cargo +ws63 clippy --target "$TARGET" -- -D warnings
+
+  publish:
+    name: Publish to crates.io
+    runs-on: ubuntu-latest
+    needs: verify
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ws63 toolchain
+        run: |
+          curl -fsSL --retry 3 -o tc.tar.gz \
+            https://github.com/sanchuanhehe/ws63-rust-toolchain/releases/download/v1.96.0/ws63-rust-1.96.0-x86_64-unknown-linux-gnu.tar.gz
+          mkdir -p "$RUNNER_TEMP/ws63" && tar -C "$RUNNER_TEMP/ws63" -xzf tc.tar.gz
+          rustup toolchain link ws63 "$RUNNER_TEMP/ws63/stage2"
+      # Needed so cargo can read the manifest (the path dep). On publish cargo
+      # strips the path and records `ws63-pac = "0.1"` from crates.io.
+      - name: Checkout sibling ws63-pac
+        run: git clone --depth 1 https://github.com/sanchuanhehe/ws63-pac ../ws63-pac
+      # --no-verify: the verify job above already checked the riscv build; skip a
+      # second heavy target build (rt is not host-buildable).
+      - name: Publish ws63-rt
+        run: cargo +ws63 publish --no-verify --token "${{ secrets.CRATES_IO_TOKEN }}"
