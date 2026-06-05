@@ -4,6 +4,15 @@ All notable changes to this project are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-06-05
+
+### Added
+
+- `bundled-memory-x` feature (default): ws63-rt ships its bundled `memory.x` +
+  linker scripts and exports them via `cargo:rustc-link-search`. Disable the
+  feature to let a binary supply its **own** `memory.x` (e.g. the `custom_memory`
+  example) without a duplicate-symbol / layout conflict.
+
 ## [0.1.1] - 2026-06-02
 
 ### Changed
