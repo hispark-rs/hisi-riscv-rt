@@ -24,7 +24,7 @@ jobs:
       - name: Install ws63 toolchain
         run: |
           curl -fsSL --retry 3 -o tc.tar.gz \
-            https://github.com/sanchuanhehe/ws63-rust-toolchain/releases/download/v1.96.0/ws63-rust-1.96.0-x86_64-unknown-linux-gnu.tar.gz
+            https://github.com/sanchuanhehe/ws63-rust-toolchain/releases/download/v1.96.0-1/ws63-rust-1.96.0-x86_64-unknown-linux-gnu.tar.gz
           mkdir -p "$RUNNER_TEMP/ws63" && tar -C "$RUNNER_TEMP/ws63" -xzf tc.tar.gz
           rustup toolchain link ws63 "$RUNNER_TEMP/ws63/stage2"
           rustc +ws63 --version
