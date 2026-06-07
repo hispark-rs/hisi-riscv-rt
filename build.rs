@@ -35,7 +35,13 @@ fn main() {
         fs::copy(memory_x, &memory_out).expect("Failed to copy memory.x");
     }
     fs::copy(layout_ld, &layout_out).expect("Failed to copy layout.ld");
-    fs::copy(device_x, &device_out).expect("Failed to copy device.x");
+    // device.x carries the WS63 interrupt vector names. Under chip-bs21 the BS21
+    // vectors come from bs21-pac's device.x (its rt feature), so we must NOT also
+    // drop the WS63 one — that would put two `device.x` on the path and make
+    // `INCLUDE device.x` order-dependent (WS63 names vs BS21 names).
+    if env::var_os("CARGO_FEATURE_CHIP_WS63").is_some() {
+        fs::copy(device_x, &device_out).expect("Failed to copy device.x");
+    }
     fs::copy(symbols_x, &symbols_out).expect("Failed to copy riscv-rt-symbols.x");
 
     // Single entry script that INCLUDEs the four scripts in the required order

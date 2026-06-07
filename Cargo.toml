@@ -15,22 +15,25 @@ categories = ["embedded", "no-std", "hardware-support"]
 # (the WS63 core has no atomic extension). Exactly one crate must enable this.
 riscv = { version = "0.13", features = ["critical-section-single-hart"] }
 riscv-rt = "0.14"
-# version + path: `path` is used for local/monorepo builds, `version` is required
-# for `cargo publish`. In the monorepo, the root [patch.crates-io] keeps this and
-# ws63-hal's registry dep resolved to the single local ws63-pac instance.
-ws63-pac = { version = "0.1", path = "../ws63-pac" }
+# The active chip's PAC (exactly one, selected by the chip feature) — re-exported
+# for the interrupt enum; its device.x (emitted under chip-ws63 here, or by the
+# PAC's own rt feature for BS21) drives the riscv-rt vector table. path = monorepo,
+# version = `cargo publish`.
+ws63-pac = { version = "0.1", path = "../ws63-pac", optional = true }
+bs21-pac = { version = "0.1", path = "../bs21-pac", optional = true }
 critical-section = "1"
 
 [features]
-# `bundled-memory-x` (default ON): ws63-rt ships a correct WS63 memory.x and puts
-# it on the linker search path, so downstream binaries link with zero config.
-# A binary that needs its OWN memory layout sets `default-features = false` on
-# ws63-rt and supplies its own memory.x (copy it to OUT_DIR + rustc-link-search in
-# its build.rs — see ws63-examples/custom_memory). That keeps exactly ONE memory.x
-# on the search path, so ws63-link.x's `INCLUDE memory.x` resolves deterministically
-# (no two-memory.x / link-order ambiguity, no MEMORY-region-redefined conflict).
-default = ["bundled-memory-x"]
+# bundled-memory-x (default ON) + chip-ws63 (default): ws63-rt ships the WS63
+# memory.x + the WS63 device.x. A binary with its OWN memory layout sets
+# `default-features = false` (turning both off) and must re-select its chip, e.g.
+# `features = ["chip-ws63"]` (own memory.x) or `["chip-bs21"]` (BS21). Keeping
+# exactly one memory.x on the search path makes ws63-link.x's `INCLUDE memory.x`
+# deterministic.
+default = ["bundled-memory-x", "chip-ws63"]
 bundled-memory-x = []
+chip-ws63 = ["dep:ws63-pac"]
+chip-bs21 = ["dep:bs21-pac"]
 
 [build-dependencies]
 
