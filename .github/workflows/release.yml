@@ -9,11 +9,11 @@ env:
   CARGO_TERM_COLOR: always
   TARGET: riscv32imfc-unknown-none-elf
 
-# ws63-rt is riscv-only (it global_asm!s the startup and depends on ws63-pac via
+# hisi-riscv-rt is riscv-only (it global_asm!s the startup and depends on ws63-pac via
 # `path = "../ws63-pac"`), so — unlike pac/hal which check on host stable — both
 # jobs need the custom ws63 toolchain (riscv32imfc builtin) and a sibling
 # ws63-pac checkout. crates.io publishing is owned by THIS repo (not the ws63-rs
-# monorepo): tag `vX.Y.Z` here to release ws63-rt X.Y.Z.
+# monorepo): tag `vX.Y.Z` here to release hisi-riscv-rt X.Y.Z.
 jobs:
   verify:
     name: Verify (riscv32imfc)
@@ -52,5 +52,5 @@ jobs:
         run: git clone --depth 1 https://github.com/sanchuanhehe/ws63-pac ../ws63-pac
       # --no-verify: the verify job above already checked the riscv build; skip a
       # second heavy target build (rt is not host-buildable).
-      - name: Publish ws63-rt
+      - name: Publish hisi-riscv-rt
         run: cargo +ws63 publish --no-verify --token "${{ secrets.CRATES_IO_TOKEN }}"

@@ -1,17 +1,17 @@
 [package]
-name = "ws63-rt"
+name = "hisi-riscv-rt"
 version = "0.2.0"
 edition = "2024"
 description = "Runtime support for HiSilicon WS63 (RISC-V RV32IMFC_Zicsr) — startup, interrupt vectors, linker script"
 license = "MIT"
-repository = "https://github.com/sanchuanhehe/ws63-rt"
+repository = "https://github.com/sanchuanhehe/hisi-riscv-rt"
 keywords = ["ws63", "hisilicon", "riscv", "embedded", "runtime"]
 categories = ["embedded", "no-std", "hardware-support"]
 
 [dependencies]
-# ws63-rt owns the single application hart, so it registers the global
+# hisi-riscv-rt owns the single application hart, so it registers the global
 # critical-section impl for the whole firmware. This impl backs both
-# ws63-pac's `Peripherals::take()` and ws63-hal's portable-atomic polyfill
+# ws63-pac's `Peripherals::take()` and hisi-riscv-hal's portable-atomic polyfill
 # (the WS63 core has no atomic extension). Exactly one crate must enable this.
 riscv = { version = "0.13", features = ["critical-section-single-hart"] }
 riscv-rt = "0.14"
@@ -24,7 +24,7 @@ bs21-pac = { version = "0.1", path = "../bs21-pac", optional = true }
 critical-section = "1"
 
 [features]
-# bundled-memory-x (default ON) + chip-ws63 (default): ws63-rt ships the WS63
+# bundled-memory-x (default ON) + chip-ws63 (default): hisi-riscv-rt ships the WS63
 # memory.x + the WS63 device.x. A binary with its OWN memory layout sets
 # `default-features = false` (turning both off) and must re-select its chip, e.g.
 # `features = ["chip-ws63"]` (own memory.x) or `["chip-bs21"]` (BS21). Keeping

@@ -1,4 +1,4 @@
-//! # ws63-rt — Runtime for HiSilicon WS63 (RISC-V RV32IMFC_Zicsr)
+//! # hisi-riscv-rt — Runtime for HiSilicon WS63 (RISC-V RV32IMFC_Zicsr)
 //!
 //! Provides:
 //! - Assembly startup (reset vector, trap vector, interrupt dispatchers)
@@ -14,7 +14,7 @@
 //! #![no_std]
 //! #![no_main]
 //!
-//! use ws63_rt::entry;
+//! use hisi_riscv_rt::entry;
 //!
 //! #[entry]
 //! fn main() -> ! {
@@ -53,7 +53,7 @@ pub use ws63_pac::interrupt;
 /// The function will be called after runtime initialization completes.
 ///
 /// ```ignore
-/// #[ws63_rt::entry]
+/// #[hisi_riscv_rt::entry]
 /// fn main() -> ! {
 ///     loop {}
 /// }

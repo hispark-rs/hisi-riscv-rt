@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
-- `bundled-memory-x` feature (default): ws63-rt ships its bundled `memory.x` +
+- `bundled-memory-x` feature (default): hisi-riscv-rt ships its bundled `memory.x` +
   linker scripts and exports them via `cargo:rustc-link-search`. Disable the
   feature to let a binary supply its **own** `memory.x` (e.g. the `custom_memory`
   example) without a duplicate-symbol / layout conflict.
@@ -17,7 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
-- CI: first release cut by ws63-rt's own repo pipeline; adds the repo's release.yml (no functional change since 0.1.0).
+- CI: first release cut by hisi-riscv-rt's own repo pipeline; adds the repo's release.yml (no functional change since 0.1.0).
 
 ## [0.1.0] - 2026-06-02
 
@@ -43,7 +43,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
-- `ws63-rt` is a workspace member consumed by all `ws63-examples/*` binaries
+- `hisi-riscv-rt` is a workspace member consumed by all `ws63-examples/*` binaries
 - startup.S: changed mtvec to Vectored mode for proper interrupt routing to trap_vector entries
 - Startup disables all MIE during init; runtime_init now re-enables MEIE, MTIE, MSIE before main()
 - Stack symbols (__irq_stack_top, __exc_stack_top, __nmi_stack_top) now defined authoritatively in .stacks section (layout.ld/memory.x), single source of truth

@@ -11,7 +11,7 @@ env:
   TARGET: riscv32imfc-unknown-none-elf
 
 jobs:
-  # ws63-rt is riscv-only: it `global_asm!`s the riscv startup and pulls the
+  # hisi-riscv-rt is riscv-only: it `global_asm!`s the riscv startup and pulls the
   # riscv crate, and it depends on ws63-pac via `path = "../ws63-pac"`. So the CI
   # needs (a) the custom ws63 toolchain, which has the riscv32imfc target builtin
   # (`rustup target add` cannot fetch it — it is not a distributed std target),
