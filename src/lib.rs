@@ -42,7 +42,7 @@ core::arch::global_asm!(include_str!("../asm/startup.S"));
 pub mod startup;
 
 #[cfg(feature = "chip-bs21")]
-pub use bs21_pac::interrupt;
+pub use bs2x_pac::interrupt;
 /// Re-export the active PAC's interrupt types for user convenience.
 #[cfg(feature = "chip-ws63")]
 pub use ws63_pac::interrupt;
@@ -64,7 +64,7 @@ pub use riscv_rt::entry;
 pub mod prelude {
     pub use crate::entry;
     #[cfg(feature = "chip-bs21")]
-    pub use bs21_pac::interrupt::ExternalInterrupt as Interrupt;
+    pub use bs2x_pac::interrupt::ExternalInterrupt as Interrupt;
     #[cfg(feature = "chip-ws63")]
     pub use ws63_pac::interrupt::ExternalInterrupt as Interrupt;
 }

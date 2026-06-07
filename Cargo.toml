@@ -20,7 +20,7 @@ riscv-rt = "0.14"
 # PAC's own rt feature for BS21) drives the riscv-rt vector table. path = monorepo,
 # version = `cargo publish`.
 ws63-pac = { version = "0.1", path = "../ws63-pac", optional = true }
-bs21-pac = { version = "0.1", path = "../bs21-pac", optional = true }
+bs2x-pac = { version = "0.1", path = "../bs2x-pac", optional = true }
 critical-section = "1"
 
 [features]
@@ -33,7 +33,7 @@ critical-section = "1"
 default = ["bundled-memory-x", "chip-ws63"]
 bundled-memory-x = []
 chip-ws63 = ["dep:ws63-pac"]
-chip-bs21 = ["dep:bs21-pac"]
+chip-bs21 = ["dep:bs2x-pac"]
 
 [build-dependencies]
 

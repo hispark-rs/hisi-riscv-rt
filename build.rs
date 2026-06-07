@@ -36,7 +36,7 @@ fn main() {
     }
     fs::copy(layout_ld, &layout_out).expect("Failed to copy layout.ld");
     // device.x carries the WS63 interrupt vector names. Under chip-bs21 the BS21
-    // vectors come from bs21-pac's device.x (its rt feature), so we must NOT also
+    // vectors come from bs2x-pac's device.x (its rt feature), so we must NOT also
     // drop the WS63 one — that would put two `device.x` on the path and make
     // `INCLUDE device.x` order-dependent (WS63 names vs BS21 names).
     if env::var_os("CARGO_FEATURE_CHIP_WS63").is_some() {
