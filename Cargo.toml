@@ -17,10 +17,12 @@ riscv = { version = "0.13", features = ["critical-section-single-hart"] }
 riscv-rt = "0.14"
 # The active chip's PAC (exactly one, selected by the chip feature) — re-exported
 # for the interrupt enum; its device.x (emitted under chip-ws63 here, or by the
-# PAC's own rt feature for BS21) drives the riscv-rt vector table. path = monorepo,
-# version = `cargo publish`.
-ws63-pac = { version = "0.1", path = "../ws63-pac", optional = true }
-bs2x-pac = { version = "0.1", path = "../bs2x-pac", optional = true }
+# PAC's own rt feature for BS21) drives the riscv-rt vector table. Declared as a
+# registry version: inside the hisi-riscv-rs workspace the root [patch.crates-io]
+# redirects both PACs to their local crates/ paths; standalone CI uses the git
+# [patch.crates-io] at the bottom of this manifest (bs2x-pac is unpublished).
+ws63-pac = { version = "0.1", optional = true }
+bs2x-pac = { version = "0.1", optional = true }
 critical-section = "1"
 
 [features]
@@ -44,3 +46,12 @@ debug = true
 
 [profile.dev]
 opt-level = "s"
+
+# Standalone builds (this repo's own CI) resolve the PACs from crates.io, where
+# ws63-pac lags and bs2x-pac is unpublished — so even the default-feature (chip-ws63)
+# resolution fails on the optional bs2x-pac. Patch both to their git sources. IGNORED
+# inside the hisi-riscv-rs workspace (only the workspace-root [patch] applies, which
+# redirects both to local crates/ paths).
+[patch.crates-io]
+ws63-pac = { git = "https://github.com/sanchuanhehe/ws63-pac" }
+bs2x-pac = { git = "https://github.com/sanchuanhehe/bs2x-pac" }
