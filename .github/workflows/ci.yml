@@ -13,7 +13,7 @@ env:
 jobs:
   # hisi-riscv-rt is riscv-only: it `global_asm!`s the riscv startup and pulls the
   # riscv crate, and it depends on ws63-pac via `path = "../ws63-pac"`. So the CI
-  # needs (a) the custom ws63 toolchain, which has the riscv32imfc target builtin
+  # needs (a) the custom hisi-riscv toolchain, which has the riscv32imfc target builtin
   # (`rustup target add` cannot fetch it — it is not a distributed std target),
   # and (b) a sibling ws63-pac checkout so the path dependency resolves.
   check:
@@ -21,21 +21,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install ws63 toolchain
+      - name: Install hisi-riscv toolchain
         run: |
           curl -fsSL --retry 3 -o tc.tar.gz \
-            https://github.com/hispark-rs/ws63-rust-toolchain/releases/download/v1.96.0-1/ws63-rust-1.96.0-x86_64-unknown-linux-gnu.tar.gz
-          mkdir -p "$RUNNER_TEMP/ws63" && tar -C "$RUNNER_TEMP/ws63" -xzf tc.tar.gz
-          rustup toolchain link ws63 "$RUNNER_TEMP/ws63/stage2"
-          rustc +ws63 --version
+            https://github.com/hispark-rs/hisi-riscv-rust-toolchain/releases/download/v1.96.0-2/hisi-riscv-rust-1.96.0-x86_64-unknown-linux-gnu.tar.gz
+          mkdir -p "$RUNNER_TEMP/hisi-riscv" && tar -C "$RUNNER_TEMP/hisi-riscv" -xzf tc.tar.gz
+          rustup toolchain link hisi-riscv "$RUNNER_TEMP/hisi-riscv/stage2"
+          rustc +hisi-riscv --version
       - name: Checkout sibling ws63-pac (../ws63-pac path dependency)
         run: git clone --depth 1 https://github.com/hispark-rs/ws63-pac ../ws63-pac
       - name: Check
-        run: cargo +ws63 check --target "$TARGET"
+        run: cargo +hisi-riscv check --target "$TARGET"
       - name: Clippy
-        run: cargo +ws63 clippy --target "$TARGET" -- -D warnings
+        run: cargo +hisi-riscv clippy --target "$TARGET" -- -D warnings
       - name: Docs
-        run: cargo +ws63 doc --no-deps --document-private-items --target "$TARGET"
+        run: cargo +hisi-riscv doc --no-deps --document-private-items --target "$TARGET"
         env:
           RUSTDOCFLAGS: -D warnings
 
