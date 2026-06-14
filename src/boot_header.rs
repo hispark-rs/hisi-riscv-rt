@@ -11,28 +11,33 @@
 //! linker at flash `0x230000`), so `probe-rs download <elf>` / `cargo flash`
 //! write a directly bootable image with no separate packaging step.
 //!
-//! On a dev chip with secure boot **disabled** (efuse `SEC_VERIFY_ENABLE == 0`),
-//! flashboot's `verify_image_*` path short-circuits to success *before* reading
-//! any signature or even the body hash, then jumps unconditionally. A static
-//! header (magics + structural fields + the non-encrypted `code_enc_flag`, with
-//! zero signature/pubkey and zero hash) is therefore sufficient to boot.
+//! ## "Route 2": link-time length, post-link hash
 //!
-//! Field values reproduce `hisi-fwpkg`'s `build_image_header`
-//! (`hisi-fwpkg/crates/hisi-fwpkg/src/image.rs`) field-for-field, with the only
-//! deltas being the **body-dependent** fields, which flashboot's skipped verify
-//! path never reads:
+//! On-silicon measurement shows flashboot checks the **body hash** even with
+//! secure-verify disabled (zeroing only `code_area_hash` of a known-good image
+//! stops it booting). So `code_area_hash` MUST be the real SHA-256 of the body
+//! and `code_area_len` the real body length (the hash is computed over the
+//! first `code_area_len` body bytes). A linker cannot compute SHA-256, so the
+//! hash is a **post-link** patch (`hisi-fwpkg patch-hash`). The length, however,
+//! *can* be a linker symbol — so this module bakes everything except the two
+//! body-dependent fields at link time:
 //!
-//! * `code_area_len` / `code_uncompress_len` (code-info `+0x24` / `+0x80`):
-//!   left **zero**. The real body length is not available as a constant at
-//!   compile time, and these are only consumed by the verify path flashboot
-//!   skips. (A linker symbol *could* fill them, but a `static` initializer
-//!   cannot const-read a relocation, so a post-link patch would be required —
-//!   not worth it for a field that is never checked. See module note below.)
-//! * `code_area_hash` (code-info `+0x28`, 32 bytes): left **zero** — a real
-//!   SHA-256 cannot be computed at link time, and it is only read by the
-//!   skipped verify path.
+//! * `code_area_len` (code-info `+0x24` = `0x124`) and `code_uncompress_len`
+//!   (code-info `+0x80` = `0x180`) are emitted by the **linker** as
+//!   `__hisi_app_body_len` (`__hisi_body_end - 0x230300`), via `LONG(...)`
+//!   directives in `boot-header.x` — a Rust `static` initializer cannot
+//!   const-read a relocation. To make room for those linker words, the header
+//!   body is split here into three byte-array statics (`part0`/`part1`/`part2`)
+//!   placed in sections `.boot_header.part0/1/2`; `boot-header.x` stitches them
+//!   back together with the two `LONG` words interleaved at the right offsets.
+//! * `code_area_hash` (code-info `+0x28` = `0x128`, 32 bytes): left **zero** in
+//!   `part1` — patched post-link by `hisi-fwpkg patch-hash`.
 //! * `text_segment_size` (code-info `+0x84`): left **zero** (informational
 //!   only; the vendor default `0x10000` is not needed to boot).
+//!
+//! The three parts and the two interleaved `LONG` words reassemble to the exact
+//! same `0x300`-byte layout produced field-for-field by `hisi-fwpkg`'s
+//! `build_image_header` (`hisi-fwpkg/crates/hisi-fwpkg/src/image.rs`).
 
 /// `APPBOOT_KEY_AREA_IMAGE_ID` — magic of the key area (offset 0x000).
 const APP_KEY_AREA_IMAGE_ID: u32 = 0x4B0F_2D1E;
@@ -73,9 +78,6 @@ const VERSION_EXT: u32 = 0;
 const VERSION_MASK: u32 = 0;
 const MSID: u32 = 0;
 const MSID_MASK: u32 = 0;
-/// `code_area_len` / `code_uncompress_len`. Zero: body-dependent, never read by
-/// flashboot's (skipped) verify path. See module docs.
-const CODE_AREA_LEN: u32 = 0;
 /// `text_segment_size` — informational only; not needed to boot.
 const TEXT_SEGMENT_SIZE: u32 = 0;
 
@@ -89,9 +91,12 @@ const fn put_u32(mut buf: [u8; IMAGE_HEADER_LEN], off: usize, v: u32) -> [u8; IM
     buf
 }
 
-/// Build the `0x300`-byte WS63 app image header. Signature / pubkey / hash blobs
-/// and the body-dependent length fields are left zero. Mirrors
-/// `hisi-fwpkg::image::build_image_header`.
+/// Build the full `0x300`-byte WS63 app image header, with the body-dependent
+/// length fields (`code_area_len` @0x124, `code_uncompress_len` @0x180) and the
+/// `code_area_hash` (@0x128) left **zero**. The two lengths are overwritten by
+/// the linker (see `boot-header.x`); the hash is patched post-link. Mirrors
+/// `hisi-fwpkg::image::build_image_header` field-for-field. Used only to slice
+/// out the three constant parts below.
 const fn build_header() -> [u8; IMAGE_HEADER_LEN] {
     let mut h = [0u8; IMAGE_HEADER_LEN];
 
@@ -124,23 +129,71 @@ const fn build_header() -> [u8; IMAGE_HEADER_LEN] {
     h = put_u32(h, CI + 0x18, MSID); // msid_ext
     h = put_u32(h, CI + 0x1C, MSID_MASK); // mask_msid_ext
     h = put_u32(h, CI + 0x20, 0); // code_area_addr (0 = immediately follows)
-    h = put_u32(h, CI + 0x24, CODE_AREA_LEN); // code_area_len
-    // code_area_hash[32] @ CI+0x28 — left zero (verify path skipped)
+    // code_area_len @ CI+0x24 (=0x124) — left zero, emitted by the linker
+    // code_area_hash[32] @ CI+0x28 (=0x128) — left zero, patched post-link
     h = put_u32(h, CI + 0x48, FLASH_NO_ENCRY_FLAG); // code_enc_flag
     // protection_key_l1/l2 + iv @ CI+0x4C.. — zero (encryption disabled)
     h = put_u32(h, CI + 0x7C, 0); // code_compress_flag (0 = not compressed)
-    h = put_u32(h, CI + 0x80, CODE_AREA_LEN); // code_uncompress_len (== code_area_len)
+    // code_uncompress_len @ CI+0x80 (=0x180) — left zero, emitted by the linker
     h = put_u32(h, CI + 0x84, TEXT_SEGMENT_SIZE); // text_segment_size
     // sig_code_info + ext — dummy zero
 
     h
 }
 
-/// The link-time boot header, emitted into section `.boot_header` (placed by the
-/// boot-header linker fragment at flash `0x230000`). `#[used]` so it survives
-/// `--gc-sections`; `#[no_mangle]` so the linker fragment's `KEEP(*(...))` and
-/// any external tooling can find it by name.
+/// The full header laid out once at compile time; the three `BOOT_HEADER_PARTN`
+/// statics below are constant slices of it. The two length words at `0x124` and
+/// `0x180` are *holes* (zero here) filled by the linker; `0x128..0x148` (hash)
+/// is also zero, filled post-link.
+const HEADER: [u8; IMAGE_HEADER_LEN] = build_header();
+
+/// Linker-word offsets that split the header. `code_area_len` lives at
+/// `0x124`, `code_uncompress_len` at `0x180`; each is a 4-byte hole the linker
+/// fills, so the constant parts are the spans *around* them.
+const LEN_OFF: usize = 0x124; // code_area_len
+const UNCOMPLEN_OFF: usize = 0x180; // code_uncompress_len
+
+/// `[0x000 .. 0x124]` — everything up to (not including) `code_area_len`.
+const PART0_LEN: usize = LEN_OFF; // 0x124
+/// `[0x128 .. 0x180]` — between `code_area_len` and `code_uncompress_len`
+/// (includes the zero `code_area_hash` @0x128).
+const PART1_LEN: usize = UNCOMPLEN_OFF - (LEN_OFF + 4); // 0x58
+/// `[0x184 .. 0x300]` — everything after `code_uncompress_len`.
+const PART2_LEN: usize = IMAGE_HEADER_LEN - (UNCOMPLEN_OFF + 4); // 0x17C
+
+// The three parts plus the two 4-byte linker words must reconstruct 0x300.
+const _: () = assert!(PART0_LEN + 4 + PART1_LEN + 4 + PART2_LEN == IMAGE_HEADER_LEN);
+
+/// Copy a constant `N`-byte slice of `HEADER` starting at `start` (const-fn;
+/// `<[u8]>::try_into`/slicing isn't const-stable for arrays here).
+const fn slice<const N: usize>(start: usize) -> [u8; N] {
+    let mut out = [0u8; N];
+    let mut i = 0;
+    while i < N {
+        out[i] = HEADER[start + i];
+        i += 1;
+    }
+    out
+}
+
+/// `.boot_header` part 0: header bytes `[0x000 .. 0x124]`. Immediately followed
+/// in the linked output by the linker word `code_area_len` (see `boot-header.x`).
 #[used]
 #[unsafe(no_mangle)]
-#[unsafe(link_section = ".boot_header")]
-pub static BOOT_HEADER: [u8; IMAGE_HEADER_LEN] = build_header();
+#[unsafe(link_section = ".boot_header.part0")]
+pub static BOOT_HEADER_PART0: [u8; PART0_LEN] = slice::<PART0_LEN>(0);
+
+/// `.boot_header` part 1: header bytes `[0x128 .. 0x180]` (the zero
+/// `code_area_hash` lives here, patched post-link). Sits between the two linker
+/// length words.
+#[used]
+#[unsafe(no_mangle)]
+#[unsafe(link_section = ".boot_header.part1")]
+pub static BOOT_HEADER_PART1: [u8; PART1_LEN] = slice::<PART1_LEN>(LEN_OFF + 4);
+
+/// `.boot_header` part 2: header bytes `[0x184 .. 0x300]` — after the linker
+/// word `code_uncompress_len`.
+#[used]
+#[unsafe(no_mangle)]
+#[unsafe(link_section = ".boot_header.part2")]
+pub static BOOT_HEADER_PART2: [u8; PART2_LEN] = slice::<PART2_LEN>(UNCOMPLEN_OFF + 4);
