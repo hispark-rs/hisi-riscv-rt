@@ -8,8 +8,11 @@
 //! Normally that header is added *post-build* by `hisi-fwpkg image`. With the
 //! `boot-header` feature enabled, this module bakes a structurally-correct
 //! header **into the ELF at link time** (section `.boot_header`, placed by the
-//! linker at flash `0x230000`), so `probe-rs download <elf>` / `cargo flash`
-//! write a directly bootable image with no separate packaging step.
+//! linker at flash `0x230000`), so — after the post-link `hisi-fwpkg patch-hash`
+//! fills the body SHA-256 (see "Route 2" below) — `probe-rs download <elf>` /
+//! `probe-rs run <elf>` flash a directly bootable image with no separate
+//! `hisi-fwpkg image` packaging step. (`cargo flash` is NOT usable here: there
+//! is no runner slot to insert the mandatory post-link `patch-hash`.)
 //!
 //! ## "Route 2": link-time length, post-link hash
 //!

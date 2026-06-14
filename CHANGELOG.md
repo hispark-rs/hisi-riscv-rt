@@ -14,7 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   Bakes the 0x300-byte HiSilicon app-image header into the ELF at flash
   `0x230000` at link time, with a linker-computed `code_area_len`
   (`__hisi_app_body_len`); the body hash is filled post-link by
-  `hisi-fwpkg patch-hash`. Lets `probe-rs download` / `cargo flash` / `cargo run`
+  `hisi-fwpkg patch-hash`. Lets `probe-rs download` / `probe-rs run`
   of the bare ELF boot with no separate `hisi-fwpkg image` step — and enables
   on-target `embedded-test`. Validated on real WS63 silicon.
 
