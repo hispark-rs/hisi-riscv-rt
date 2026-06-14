@@ -1,4 +1,4 @@
-//! # ws63-rt — Runtime for HiSilicon WS63 (RISC-V RV32IMFC_Zicsr)
+//! # hisi-riscv-rt — Runtime for HiSilicon WS63 (RISC-V RV32IMFC_Zicsr)
 //!
 //! Provides:
 //! - Assembly startup (reset vector, trap vector, interrupt dispatchers)
@@ -14,7 +14,7 @@
 //! #![no_std]
 //! #![no_main]
 //!
-//! use ws63_rt::entry;
+//! use hisi_riscv_rt::entry;
 //!
 //! #[entry]
 //! fn main() -> ! {
@@ -41,7 +41,17 @@ core::arch::global_asm!(include_str!("../asm/startup.S"));
 
 pub mod startup;
 
-/// Re-export the PAC's interrupt types for user convenience.
+/// Link-time WS63 boot header (`boot-header` feature). Bakes the `0x300`-byte
+/// HiSilicon image header into the ELF at flash `0x230000` so the bare ELF is
+/// directly bootable by flashboot (no `hisi-fwpkg image` step). See the module
+/// docs for the header layout and field choices.
+#[cfg(feature = "boot-header")]
+pub mod boot_header;
+
+#[cfg(feature = "chip-bs21")]
+pub use bs2x_pac::interrupt;
+/// Re-export the active PAC's interrupt types for user convenience.
+#[cfg(feature = "chip-ws63")]
 pub use ws63_pac::interrupt;
 
 /// Entry point attribute.
@@ -50,7 +60,7 @@ pub use ws63_pac::interrupt;
 /// The function will be called after runtime initialization completes.
 ///
 /// ```ignore
-/// #[ws63_rt::entry]
+/// #[hisi_riscv_rt::entry]
 /// fn main() -> ! {
 ///     loop {}
 /// }
@@ -60,5 +70,8 @@ pub use riscv_rt::entry;
 /// Prelude: commonly used runtime types.
 pub mod prelude {
     pub use crate::entry;
+    #[cfg(feature = "chip-bs21")]
+    pub use bs2x_pac::interrupt::ExternalInterrupt as Interrupt;
+    #[cfg(feature = "chip-ws63")]
     pub use ws63_pac::interrupt::ExternalInterrupt as Interrupt;
 }

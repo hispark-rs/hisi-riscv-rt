@@ -1,4 +1,4 @@
-/* riscv-rt v0.14 compatibility symbols for ws63-rt.
+/* riscv-rt v0.14 compatibility symbols for hisi-riscv-rt.
    Loaded LAST. Uses direct assignment (=) not PROVIDE because
    riscv-rt's rlib already references these as weak extern. */
 

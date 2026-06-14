@@ -1,36 +1,48 @@
 [package]
-name = "ws63-rt"
+name = "hisi-riscv-rt"
 version = "0.2.0"
 edition = "2024"
 description = "Runtime support for HiSilicon WS63 (RISC-V RV32IMFC_Zicsr) — startup, interrupt vectors, linker script"
 license = "MIT"
-repository = "https://github.com/sanchuanhehe/ws63-rt"
+repository = "https://github.com/hispark-rs/hisi-riscv-rt"
 keywords = ["ws63", "hisilicon", "riscv", "embedded", "runtime"]
 categories = ["embedded", "no-std", "hardware-support"]
 
 [dependencies]
-# ws63-rt owns the single application hart, so it registers the global
+# hisi-riscv-rt owns the single application hart, so it registers the global
 # critical-section impl for the whole firmware. This impl backs both
-# ws63-pac's `Peripherals::take()` and ws63-hal's portable-atomic polyfill
+# ws63-pac's `Peripherals::take()` and hisi-riscv-hal's portable-atomic polyfill
 # (the WS63 core has no atomic extension). Exactly one crate must enable this.
 riscv = { version = "0.13", features = ["critical-section-single-hart"] }
 riscv-rt = "0.14"
-# version + path: `path` is used for local/monorepo builds, `version` is required
-# for `cargo publish`. In the monorepo, the root [patch.crates-io] keeps this and
-# ws63-hal's registry dep resolved to the single local ws63-pac instance.
-ws63-pac = { version = "0.1", path = "../ws63-pac" }
+# The active chip's PAC (exactly one, selected by the chip feature) — re-exported
+# for the interrupt enum; its device.x (emitted under chip-ws63 here, or by the
+# PAC's own rt feature for BS21) drives the riscv-rt vector table. Declared as a
+# registry version: inside the hisi-riscv-rs workspace the root [patch.crates-io]
+# redirects both PACs to their local crates/ paths; standalone CI uses the git
+# [patch.crates-io] at the bottom of this manifest (bs2x-pac is unpublished).
+ws63-pac = { version = "0.1", optional = true }
+bs2x-pac = { version = "0.1", optional = true }
 critical-section = "1"
 
 [features]
-# `bundled-memory-x` (default ON): ws63-rt ships a correct WS63 memory.x and puts
-# it on the linker search path, so downstream binaries link with zero config.
-# A binary that needs its OWN memory layout sets `default-features = false` on
-# ws63-rt and supplies its own memory.x (copy it to OUT_DIR + rustc-link-search in
-# its build.rs — see ws63-examples/custom_memory). That keeps exactly ONE memory.x
-# on the search path, so ws63-link.x's `INCLUDE memory.x` resolves deterministically
-# (no two-memory.x / link-order ambiguity, no MEMORY-region-redefined conflict).
-default = ["bundled-memory-x"]
+# bundled-memory-x (default ON) + chip-ws63 (default): hisi-riscv-rt ships the WS63
+# memory.x + the WS63 device.x. A binary with its OWN memory layout sets
+# `default-features = false` (turning both off) and must re-select its chip, e.g.
+# `features = ["chip-ws63"]` (own memory.x) or `["chip-bs21"]` (BS21). Keeping
+# exactly one memory.x on the search path makes ws63-link.x's `INCLUDE memory.x`
+# deterministic.
+default = ["bundled-memory-x", "chip-ws63"]
 bundled-memory-x = []
+chip-ws63 = ["dep:ws63-pac"]
+chip-bs21 = ["dep:bs2x-pac"]
+# boot-header (default OFF): bake the 0x300-byte WS63 HiSilicon image header into
+# the ELF at flash 0x230000, immediately before .startup at 0x230300, so the bare
+# ELF is directly bootable by flashboot (no separate `hisi-fwpkg image` step needed
+# for `probe-rs download` / `cargo flash`). The default build is byte-unchanged: the
+# header section + its placement are only emitted/INCLUDEd when this feature is on,
+# so QEMU/`-kernel` users are undisturbed. WS63 only.
+boot-header = []
 
 [build-dependencies]
 
@@ -41,3 +53,12 @@ debug = true
 
 [profile.dev]
 opt-level = "s"
+
+# Standalone builds (this repo's own CI) resolve the PACs from crates.io, where
+# ws63-pac lags and bs2x-pac is unpublished — so even the default-feature (chip-ws63)
+# resolution fails on the optional bs2x-pac. Patch both to their git sources. IGNORED
+# inside the hisi-riscv-rs workspace (only the workspace-root [patch] applies, which
+# redirects both to local crates/ paths).
+[patch.crates-io]
+ws63-pac = { git = "https://github.com/hispark-rs/ws63-pac" }
+bs2x-pac = { git = "https://github.com/hispark-rs/bs2x-pac" }

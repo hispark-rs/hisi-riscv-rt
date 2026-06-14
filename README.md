@@ -1,4 +1,4 @@
-# ws63-rt — Runtime for HiSilicon WS63 (RISC-V RV32IMFC)
+# hisi-riscv-rt — Runtime for HiSilicon WS63 (RISC-V RV32IMFC)
 
 Bare-metal runtime support for the HiSilicon WS63 chip (Q353333N1100 series),
 a 2.4GHz Wi-Fi 6 + BLE 5.4 + SLE combo SoC.
@@ -19,7 +19,7 @@ a 2.4GHz Wi-Fi 6 + BLE 5.4 + SLE combo SoC.
 #![no_std]
 #![no_main]
 
-use ws63_rt::entry;
+use hisi_riscv_rt::entry;
 
 #[entry]
 fn main() -> ! {
