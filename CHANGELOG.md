@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-06-15
+
+### Changed
+
+- Bump the `ws63-pac` dependency requirement to `0.2` (was `0.1`) to track the
+  ws63-pac 0.2.0 release (SPI_WSR bit-layout + TIMER fixes). No runtime change —
+  rt's startup/linker/`device.x` are unaffected by the pac fix; this is purely a
+  version-requirement bump so an app can depend on both `hisi-riscv-rt` and
+  `hisi-riscv-hal 0.4` (which also needs ws63-pac 0.2) without a resolver conflict.
+
 ## [0.2.1] - 2026-06-14
 
 ### Added

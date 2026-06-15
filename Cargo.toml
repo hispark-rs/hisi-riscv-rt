@@ -1,6 +1,6 @@
 [package]
 name = "hisi-riscv-rt"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2024"
 description = "Runtime support for HiSilicon WS63 (RISC-V RV32IMFC_Zicsr) — startup, interrupt vectors, linker script"
 license = "MIT"
@@ -21,7 +21,7 @@ riscv-rt = "0.14"
 # registry version: inside the hisi-riscv-rs workspace the root [patch.crates-io]
 # redirects both PACs to their local crates/ paths; standalone CI uses the git
 # [patch.crates-io] at the bottom of this manifest (bs2x-pac is unpublished).
-ws63-pac = { version = "0.1", optional = true }
+ws63-pac = { version = "0.2", optional = true }
 bs2x-pac = { version = "0.1", optional = true }
 critical-section = "1"
 
