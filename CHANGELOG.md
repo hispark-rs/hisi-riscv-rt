@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.0]
+
+### Changed
+
+- **No default chip** (BREAKING, esp-hal style — mirrors hisi-riscv-hal 0.5.0):
+  `default` drops `chip-ws63` → `default = ["bundled-memory-x"]`. The runtime
+  (startup asm, reset vector, linker scripts, critical-section impl) is chip-neutral
+  and compiles without a chip; only the PAC `interrupt` re-export needs one. Every
+  consumer now selects its chip explicitly (`features = ["chip-ws63"]` /
+  `["chip-bs21"]`) or gets it transitively from `hisi-riscv-hal`'s chip forwarding
+  (`hal/chip-ws63 → hisi-riscv-rt/chip-ws63`). `bundled-memory-x` stays default, so
+  the bundled WS63 `memory.x`/`device.x` are unchanged. Workspace `cargo build` /
+  `cargo check --workspace` still pass via feature unification from the ws63 examples.
+
 ## [0.2.2] - 2026-06-15
 
 ### Changed
