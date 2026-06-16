@@ -36,13 +36,15 @@ HandleReset:
     li    t0, 0
     csrw  pmpcfg3, t0
 
-    # ---- Set trap vector base in VECTORED mode (mtvec[1:0] = 01) ----
-    # trap_vector is a per-cause jump table (entry 0 = exception, 26-31 = mie
-    # interrupts, 32-91 = local IRQs), so mtvec must select vectored mode or every
-    # interrupt would land on entry 0. The table is 64-byte aligned (see .trap +
-    # layout.ld), so BASE[1:0]=00 and `ori ,1` sets the mode bits cleanly.
+    # ---- Set trap vector base in DIRECT mode (mtvec[1:0] = 00) ----
+    # The WS63 (Nuclei-derived) core does NOT take its custom local/MIE interrupts
+    # (mcause/mip bit >= 16, e.g. TIMER_INT0 = 26) through VECTORED mtvec: on
+    # silicon, mip[26]=mie[26]=mstatus.MIE=1 yet the interrupt is never serviced
+    # (see memory ws63-vectored-irq-not-delivered). In DIRECT mode all traps land on
+    # `trap_vector` (entry 0 = `j trap_entry`), and trap_entry branches on mcause's
+    # interrupt bit to dispatch interrupts by number to named device.x handlers
+    # (`__rt_irq_dispatch`) — the path the async/embassy examples prove works.
     la    t0, trap_vector
-    ori   t0, t0, 1
     csrw  mtvec, t0
 
     # ---- Disable interrupts during init ----
@@ -328,6 +330,11 @@ trap_entry:
     # Mask interrupts during exception handling
     csrci mstatus, 0x08
 
+    # In DIRECT mode all traps land here. mcause bit 31 distinguishes an interrupt
+    # (negative as a signed word) from an exception; route interrupts to the
+    # by-number named dispatcher and keep the exception path below unchanged.
+    bltz s3, _handle_interrupt
+
     # Save current sp, switch to exception stack
     csrw mscratch, sp
     la   sp, __exc_stack_top__
@@ -364,6 +371,23 @@ handle_ecall_m:
     csrr a0, mscratch
     call do_ecall_m
     j 2b
+
+# ---- Interrupt path (DIRECT mode): dispatch by mcause IRQ number ----
+# Reached from trap_entry when mcause bit 31 is set. Context is already saved by
+# save_all (s3 = mcause). Compute the IRQ number, hand it to the weak
+# `__rt_irq_dispatch` (which routes to the named device.x handler, or is a no-op by
+# default), then restore and `mret` with MIE re-enabled.
+_handle_interrupt:
+    csrw mscratch, sp
+    la   sp, __irq_stack_top__
+    slli t0, s3, 1              # shift out mcause bit31 (interrupt flag)
+    srli a0, t0, 1             # a0 = IRQ number (exception code)
+    call __rt_irq_dispatch
+    csrr sp, mscratch
+    li   t0, 0x1880            # MPP=M-mode, MPIE=1 -> MIE re-enabled after mret
+    csrs mstatus, t0
+    restore_all
+    mret
 
 
 # ======================================================================
@@ -587,6 +611,13 @@ mie5_interrupt_handler:
 
 .weak local_isr_dispatch
 local_isr_dispatch:
+    ret
+
+# Weak default interrupt dispatcher (DIRECT-mode path). `a0` = IRQ number. The
+# application/HAL overrides this (e.g. an `extern "C" fn __rt_irq_dispatch(irq:
+# u32)` that routes to the matching named handler). Default: ignore (return).
+.weak __rt_irq_dispatch
+__rt_irq_dispatch:
     ret
 
 .weak do_insn_misaligned
