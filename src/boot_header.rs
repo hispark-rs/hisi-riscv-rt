@@ -100,6 +100,10 @@ const fn put_u32(mut buf: [u8; IMAGE_HEADER_LEN], off: usize, v: u32) -> [u8; IM
 /// the linker (see `boot-header.x`); the hash is patched post-link. Mirrors
 /// `hisi-fwpkg::image::build_image_header` field-for-field. Used only to slice
 /// out the three constant parts below.
+// `CI + 0x00` is the first entry of a code-info offset table; the explicit `+ 0x00`
+// keeps every field's offset visually aligned with its siblings (`+ 0x04`, `+ 0x08`,
+// …), so allow the identity_op rather than break the table's readability.
+#[allow(clippy::identity_op)]
 const fn build_header() -> [u8; IMAGE_HEADER_LEN] {
     let mut h = [0u8; IMAGE_HEADER_LEN];
 
