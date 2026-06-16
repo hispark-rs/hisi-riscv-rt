@@ -41,6 +41,13 @@ core::arch::global_asm!(include_str!("../asm/startup.S"));
 
 pub mod startup;
 
+/// Link-time WS63 boot header (`boot-header` feature). Bakes the `0x300`-byte
+/// HiSilicon image header into the ELF at flash `0x230000` so the bare ELF is
+/// directly bootable by flashboot (no `hisi-fwpkg image` step). See the module
+/// docs for the header layout and field choices.
+#[cfg(feature = "boot-header")]
+pub mod boot_header;
+
 #[cfg(feature = "chip-bs21")]
 pub use bs2x_pac::interrupt;
 /// Re-export the active PAC's interrupt types for user convenience.

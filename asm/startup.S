@@ -36,13 +36,15 @@ HandleReset:
     li    t0, 0
     csrw  pmpcfg3, t0
 
-    # ---- Set trap vector base in VECTORED mode (mtvec[1:0] = 01) ----
-    # trap_vector is a per-cause jump table (entry 0 = exception, 26-31 = mie
-    # interrupts, 32-91 = local IRQs), so mtvec must select vectored mode or every
-    # interrupt would land on entry 0. The table is 64-byte aligned (see .trap +
-    # layout.ld), so BASE[1:0]=00 and `ori ,1` sets the mode bits cleanly.
+    # ---- Set trap vector base in DIRECT mode (mtvec[1:0] = 00) ----
+    # The WS63 (Nuclei-derived) core does NOT take its custom local/MIE interrupts
+    # (mcause/mip bit >= 16, e.g. TIMER_INT0 = 26) through VECTORED mtvec: on
+    # silicon, mip[26]=mie[26]=mstatus.MIE=1 yet the interrupt is never serviced
+    # (see memory ws63-vectored-irq-not-delivered). In DIRECT mode all traps land on
+    # `trap_vector` (entry 0 = `j trap_entry`), and trap_entry branches on mcause's
+    # interrupt bit to dispatch interrupts by number to named device.x handlers
+    # (`__rt_irq_dispatch`) — the path the async/embassy examples prove works.
     la    t0, trap_vector
-    ori   t0, t0, 1
     csrw  mtvec, t0
 
     # ---- Disable interrupts during init ----
@@ -156,6 +158,94 @@ excp_vect_table:
     .word do_store_page_fault   # 15
     .word default_exc_handler   # 16+
 excp_vect_table_end:
+
+# ======================================================================
+#  Interrupt dispatch table (.rodata), indexed by IRQ number (mcause low bits).
+#  __rt_irq_dispatch (DIRECT-mode path) loads __INTERRUPTS[irq] and tail-calls it.
+#  Names + numbers follow the authoritative PAC ws63_pac::interrupt::ExternalInterrupt
+#  (gaps at 30, 36-39, 67-68 → DefaultHandler). Each entry is a `device.x` PROVIDE
+#  weak symbol (= DefaultHandler) the application overrides by defining a function of
+#  the same name (e.g. `#[no_mangle] extern "C" fn TIMER_INT0()`).
+# ======================================================================
+.section .rodata
+.align 4
+.global __INTERRUPTS
+__INTERRUPTS:
+    .word DefaultHandler        # 0
+    .word DefaultHandler        # 1
+    .word DefaultHandler        # 2
+    .word DefaultHandler        # 3
+    .word DefaultHandler        # 4
+    .word DefaultHandler        # 5
+    .word DefaultHandler        # 6
+    .word DefaultHandler        # 7
+    .word DefaultHandler        # 8
+    .word DefaultHandler        # 9
+    .word DefaultHandler        # 10
+    .word DefaultHandler        # 11
+    .word DefaultHandler        # 12
+    .word DefaultHandler        # 13
+    .word DefaultHandler        # 14
+    .word DefaultHandler        # 15
+    .word DefaultHandler        # 16
+    .word DefaultHandler        # 17
+    .word DefaultHandler        # 18
+    .word DefaultHandler        # 19
+    .word DefaultHandler        # 20
+    .word DefaultHandler        # 21
+    .word DefaultHandler        # 22
+    .word DefaultHandler        # 23
+    .word DefaultHandler        # 24
+    .word DefaultHandler        # 25
+    .word TIMER_INT0            # 26
+    .word TIMER_INT1            # 27
+    .word TIMER_INT2            # 28
+    .word RTC_IRQ              # 29
+    .word DefaultHandler        # 30 (gap)
+    .word I2C0_INT             # 31
+    .word I2C1_INT             # 32
+    .word GPIO_INT0            # 33
+    .word GPIO_INT1            # 34
+    .word GPIO_INT2            # 35
+    .word DefaultHandler        # 36 (gap)
+    .word DefaultHandler        # 37 (gap)
+    .word DefaultHandler        # 38 (gap)
+    .word DefaultHandler        # 39 (gap)
+    .word COEX_WL_INT          # 40
+    .word COEX_BT_INT          # 41
+    .word COEX_WIFI_RESUME_INT # 42
+    .word SPI_INT             # 43
+    .word WLPHY_INT           # 44
+    .word WLMAC_INT           # 45
+    .word BLE_INT             # 46
+    .word SLE_INT             # 47
+    .word TSENSOR_INT         # 48
+    .word PMU_CMU_ERR_INT      # 49
+    .word DIAG_INT            # 50
+    .word I2S_INT            # 51
+    .word QSPI_INT           # 52
+    .word UART0_INT           # 53
+    .word UART1_INT           # 54
+    .word UART2_INT           # 55
+    .word PWM_ABNOR_INT        # 56
+    .word PWM_CFG_INT          # 57
+    .word SFC_INT            # 58
+    .word DMA_INT            # 59
+    .word TIMER_ABNOR_INT      # 60
+    .word I2S_TX_INT          # 61
+    .word I2S_RX_INT          # 62
+    .word PKE_REE_INT         # 63
+    .word SPACC_REE_INT        # 64
+    .word RKP_REE_INT         # 65
+    .word KLAD_REE_INT         # 66
+    .word DefaultHandler        # 67 (gap)
+    .word DefaultHandler        # 68 (gap)
+    .word MAC_MONITOR_INT      # 69
+    .word MEM_MONITOR_INT      # 70
+    .word TCM_MONITOR_INT      # 71
+    .word LSADC_INTR          # 72
+__INTERRUPTS_end:
+.set __INTERRUPTS_len, (__INTERRUPTS_end - __INTERRUPTS) / 4
 
 
 # ======================================================================
@@ -328,6 +418,11 @@ trap_entry:
     # Mask interrupts during exception handling
     csrci mstatus, 0x08
 
+    # In DIRECT mode all traps land here. mcause bit 31 distinguishes an interrupt
+    # (negative as a signed word) from an exception; route interrupts to the
+    # by-number named dispatcher and keep the exception path below unchanged.
+    bltz s3, _handle_interrupt
+
     # Save current sp, switch to exception stack
     csrw mscratch, sp
     la   sp, __exc_stack_top__
@@ -364,6 +459,23 @@ handle_ecall_m:
     csrr a0, mscratch
     call do_ecall_m
     j 2b
+
+# ---- Interrupt path (DIRECT mode): dispatch by mcause IRQ number ----
+# Reached from trap_entry when mcause bit 31 is set. Context is already saved by
+# save_all (s3 = mcause). Compute the IRQ number, hand it to the weak
+# `__rt_irq_dispatch` (which routes to the named device.x handler, or is a no-op by
+# default), then restore and `mret` with MIE re-enabled.
+_handle_interrupt:
+    csrw mscratch, sp
+    la   sp, __irq_stack_top__
+    slli t0, s3, 1              # shift out mcause bit31 (interrupt flag)
+    srli a0, t0, 1             # a0 = IRQ number (exception code)
+    call __rt_irq_dispatch
+    csrr sp, mscratch
+    li   t0, 0x1880            # MPP=M-mode, MPIE=1 -> MIE re-enabled after mret
+    csrs mstatus, t0
+    restore_all
+    mret
 
 
 # ======================================================================
@@ -587,6 +699,23 @@ mie5_interrupt_handler:
 
 .weak local_isr_dispatch
 local_isr_dispatch:
+    ret
+
+# Default interrupt dispatcher (DIRECT-mode path). `a0` = IRQ number. Indexes the
+# `__INTERRUPTS` table and tail-calls the named device.x handler for that IRQ (the
+# handler's `ret` returns into `_handle_interrupt`). Out-of-range IRQs return
+# without action. Weak so an application may replace the whole dispatcher if it
+# prefers a single hook over per-IRQ named symbols.
+.weak __rt_irq_dispatch
+__rt_irq_dispatch:
+    li   t0, 73                 # __INTERRUPTS length (IRQ 0..72); keep in sync below
+    bgeu a0, t0, 1f
+    la   t0, __INTERRUPTS
+    slli t1, a0, 2
+    add  t0, t0, t1
+    lw   t0, 0(t0)
+    jr   t0                     # tail-call __INTERRUPTS[irq] (named handler)
+1:
     ret
 
 .weak do_insn_misaligned

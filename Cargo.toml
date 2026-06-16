@@ -1,6 +1,6 @@
 [package]
 name = "hisi-riscv-rt"
-version = "0.2.0"
+version = "0.4.0"
 edition = "2024"
 description = "Runtime support for HiSilicon WS63 (RISC-V RV32IMFC_Zicsr) — startup, interrupt vectors, linker script"
 license = "MIT"
@@ -21,21 +21,32 @@ riscv-rt = "0.14"
 # registry version: inside the hisi-riscv-rs workspace the root [patch.crates-io]
 # redirects both PACs to their local crates/ paths; standalone CI uses the git
 # [patch.crates-io] at the bottom of this manifest (bs2x-pac is unpublished).
-ws63-pac = { version = "0.1", optional = true }
+ws63-pac = { version = "0.2", optional = true }
 bs2x-pac = { version = "0.1", optional = true }
 critical-section = "1"
 
 [features]
-# bundled-memory-x (default ON) + chip-ws63 (default): hisi-riscv-rt ships the WS63
-# memory.x + the WS63 device.x. A binary with its OWN memory layout sets
-# `default-features = false` (turning both off) and must re-select its chip, e.g.
-# `features = ["chip-ws63"]` (own memory.x) or `["chip-bs21"]` (BS21). Keeping
-# exactly one memory.x on the search path makes ws63-link.x's `INCLUDE memory.x`
-# deterministic.
-default = ["bundled-memory-x", "chip-ws63"]
+# NO default chip (esp-hal style, mirroring hisi-riscv-hal 0.5.0) — the runtime
+# (startup asm + reset vector + linker scripts + critical-section impl) is
+# chip-neutral and compiles without a chip; only the PAC `interrupt` re-export needs
+# one, so every consumer selects its chip explicitly (`features = ["chip-ws63"]` or
+# `["chip-bs21"]`), or gets it transitively from `hisi-riscv-hal`'s chip forwarding
+# (`hal/chip-ws63 → hisi-riscv-rt/chip-ws63`). bundled-memory-x (default ON) still
+# ships the WS63 memory.x + device.x; a binary with its OWN memory layout sets
+# `default-features = false` and re-selects its chip. Keeping exactly one memory.x on
+# the search path makes ws63-link.x's `INCLUDE memory.x` deterministic.
+default = ["bundled-memory-x"]
 bundled-memory-x = []
 chip-ws63 = ["dep:ws63-pac"]
 chip-bs21 = ["dep:bs2x-pac"]
+# boot-header (default OFF): bake the 0x300-byte WS63 HiSilicon image header into
+# the ELF at flash 0x230000, immediately before .startup at 0x230300, so the bare
+# ELF is directly bootable by flashboot after a post-link `hisi-fwpkg patch-hash`
+# (fills the body SHA-256) — no separate `hisi-fwpkg image` step, then
+# `probe-rs download` / `probe-rs run`. The default build is byte-unchanged: the
+# header section + its placement are only emitted/INCLUDEd when this feature is on,
+# so QEMU/`-kernel` users are undisturbed. WS63 only.
+boot-header = []
 
 [build-dependencies]
 
