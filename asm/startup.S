@@ -159,6 +159,94 @@ excp_vect_table:
     .word default_exc_handler   # 16+
 excp_vect_table_end:
 
+# ======================================================================
+#  Interrupt dispatch table (.rodata), indexed by IRQ number (mcause low bits).
+#  __rt_irq_dispatch (DIRECT-mode path) loads __INTERRUPTS[irq] and tail-calls it.
+#  Names + numbers follow the authoritative PAC ws63_pac::interrupt::ExternalInterrupt
+#  (gaps at 30, 36-39, 67-68 → DefaultHandler). Each entry is a `device.x` PROVIDE
+#  weak symbol (= DefaultHandler) the application overrides by defining a function of
+#  the same name (e.g. `#[no_mangle] extern "C" fn TIMER_INT0()`).
+# ======================================================================
+.section .rodata
+.align 4
+.global __INTERRUPTS
+__INTERRUPTS:
+    .word DefaultHandler        # 0
+    .word DefaultHandler        # 1
+    .word DefaultHandler        # 2
+    .word DefaultHandler        # 3
+    .word DefaultHandler        # 4
+    .word DefaultHandler        # 5
+    .word DefaultHandler        # 6
+    .word DefaultHandler        # 7
+    .word DefaultHandler        # 8
+    .word DefaultHandler        # 9
+    .word DefaultHandler        # 10
+    .word DefaultHandler        # 11
+    .word DefaultHandler        # 12
+    .word DefaultHandler        # 13
+    .word DefaultHandler        # 14
+    .word DefaultHandler        # 15
+    .word DefaultHandler        # 16
+    .word DefaultHandler        # 17
+    .word DefaultHandler        # 18
+    .word DefaultHandler        # 19
+    .word DefaultHandler        # 20
+    .word DefaultHandler        # 21
+    .word DefaultHandler        # 22
+    .word DefaultHandler        # 23
+    .word DefaultHandler        # 24
+    .word DefaultHandler        # 25
+    .word TIMER_INT0            # 26
+    .word TIMER_INT1            # 27
+    .word TIMER_INT2            # 28
+    .word RTC_IRQ              # 29
+    .word DefaultHandler        # 30 (gap)
+    .word I2C0_INT             # 31
+    .word I2C1_INT             # 32
+    .word GPIO_INT0            # 33
+    .word GPIO_INT1            # 34
+    .word GPIO_INT2            # 35
+    .word DefaultHandler        # 36 (gap)
+    .word DefaultHandler        # 37 (gap)
+    .word DefaultHandler        # 38 (gap)
+    .word DefaultHandler        # 39 (gap)
+    .word COEX_WL_INT          # 40
+    .word COEX_BT_INT          # 41
+    .word COEX_WIFI_RESUME_INT # 42
+    .word SPI_INT             # 43
+    .word WLPHY_INT           # 44
+    .word WLMAC_INT           # 45
+    .word BLE_INT             # 46
+    .word SLE_INT             # 47
+    .word TSENSOR_INT         # 48
+    .word PMU_CMU_ERR_INT      # 49
+    .word DIAG_INT            # 50
+    .word I2S_INT            # 51
+    .word QSPI_INT           # 52
+    .word UART0_INT           # 53
+    .word UART1_INT           # 54
+    .word UART2_INT           # 55
+    .word PWM_ABNOR_INT        # 56
+    .word PWM_CFG_INT          # 57
+    .word SFC_INT            # 58
+    .word DMA_INT            # 59
+    .word TIMER_ABNOR_INT      # 60
+    .word I2S_TX_INT          # 61
+    .word I2S_RX_INT          # 62
+    .word PKE_REE_INT         # 63
+    .word SPACC_REE_INT        # 64
+    .word RKP_REE_INT         # 65
+    .word KLAD_REE_INT         # 66
+    .word DefaultHandler        # 67 (gap)
+    .word DefaultHandler        # 68 (gap)
+    .word MAC_MONITOR_INT      # 69
+    .word MEM_MONITOR_INT      # 70
+    .word TCM_MONITOR_INT      # 71
+    .word LSADC_INTR          # 72
+__INTERRUPTS_end:
+.set __INTERRUPTS_len, (__INTERRUPTS_end - __INTERRUPTS) / 4
+
 
 # ======================================================================
 #  Push / pop register macros
@@ -613,11 +701,21 @@ mie5_interrupt_handler:
 local_isr_dispatch:
     ret
 
-# Weak default interrupt dispatcher (DIRECT-mode path). `a0` = IRQ number. The
-# application/HAL overrides this (e.g. an `extern "C" fn __rt_irq_dispatch(irq:
-# u32)` that routes to the matching named handler). Default: ignore (return).
+# Default interrupt dispatcher (DIRECT-mode path). `a0` = IRQ number. Indexes the
+# `__INTERRUPTS` table and tail-calls the named device.x handler for that IRQ (the
+# handler's `ret` returns into `_handle_interrupt`). Out-of-range IRQs return
+# without action. Weak so an application may replace the whole dispatcher if it
+# prefers a single hook over per-IRQ named symbols.
 .weak __rt_irq_dispatch
 __rt_irq_dispatch:
+    li   t0, 73                 # __INTERRUPTS length (IRQ 0..72); keep in sync below
+    bgeu a0, t0, 1f
+    la   t0, __INTERRUPTS
+    slli t1, a0, 2
+    add  t0, t0, t1
+    lw   t0, 0(t0)
+    jr   t0                     # tail-call __INTERRUPTS[irq] (named handler)
+1:
     ret
 
 .weak do_insn_misaligned
