@@ -6,6 +6,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.0]
+
+### Changed
+
+- **DIRECT-mode interrupt routing** (BREAKING): `mtvec` is now set to DIRECT mode
+  (was vectored). All traps reach `trap_entry`, which branches on `mcause` bit 31 —
+  exceptions keep the existing `excp_vect_table` path (unchanged); interrupts compute
+  the IRQ number and call `__rt_irq_dispatch`, whose default indexes a new
+  `__INTERRUPTS` table (`.rodata`, IRQ 0..72, built from `ws63_pac::interrupt::
+  ExternalInterrupt`, gaps → `DefaultHandler`) and tail-calls the **`device.x`-named
+  handler** for that IRQ. So an app defines `#[no_mangle] extern "C" fn TIMER_INT0()`
+  / `GPIO_INT0()` / … (overriding the weak `device.x` PROVIDE) and the rt routes the
+  fired interrupt there — **no per-app `mcause` test / custom `mtvec` needed**.
+  `__rt_irq_dispatch` stays weak, so an app may still replace the whole dispatcher
+  with a single hook. Why this was needed: the WS63 (Nuclei ECLIC) only delivers a
+  custom interrupt once its `LOCIPRI` priority exceeds the threshold (set by
+  `hisi-riscv-hal`'s `interrupt::init`/`enable`), and the old vectored entries
+  (`mie0..5` / `local_interrupt_handler`) never fired on silicon. The old vectored
+  table entries 1-91 are now dead but harmless. **Silicon-verified on real WS63**
+  (HIL `timer_int0_named_routing` + `gpio_int0_named_routing`; full driver suite 20/20).
+
 ## [0.3.0]
 
 ### Changed
