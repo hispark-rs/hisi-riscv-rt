@@ -361,7 +361,7 @@ __INTERRUPTS_end:
     sw   s4,  0*4(sp)
     csrr s3, mcause
     sw   s3,  1*4(sp)
-    csrr s2, mbadaddr
+    csrr s2, mtval
     sw   s2,  2*4(sp)
     sw   gp,  3*4(sp)
     csrr s1, mstatus
@@ -580,83 +580,63 @@ __ebss: .4byte 0xA00000
 /* ── riscv-rt v0.14 expected exception handler symbols ───── */
 /* These are extern-weak in riscv-rt's exceptions.rs.        */
 /* We provide default infinite-loop handlers.               */
-.global SupervisorSoft
 .weak SupervisorSoft
 SupervisorSoft: j .
 
-.global MachineSoft
 .weak MachineSoft
 MachineSoft: j .
 
-.global SupervisorTimer
 .weak SupervisorTimer
 SupervisorTimer: j .
 
-.global MachineTimer
 .weak MachineTimer
 MachineTimer: j .
 
-.global SupervisorExternal
 .weak SupervisorExternal
 SupervisorExternal: j .
 
-.global MachineExternal
 .weak MachineExternal
 MachineExternal: j .
 
-.global InstructionMisaligned
 .weak InstructionMisaligned
 InstructionMisaligned: j .
 
-.global InstructionFault
 .weak InstructionFault
 InstructionFault: j .
 
-.global IllegalInstruction
 .weak IllegalInstruction
 IllegalInstruction: j .
 
-.global Breakpoint
 .weak Breakpoint
 Breakpoint: j .
 
-.global LoadMisaligned
 .weak LoadMisaligned
 LoadMisaligned: j .
 
-.global LoadFault
 .weak LoadFault
 LoadFault: j .
 
-.global StoreMisaligned
 .weak StoreMisaligned
 StoreMisaligned: j .
 
-.global StoreFault
 .weak StoreFault
 StoreFault: j .
 
-.global UserEnvCall
 .weak UserEnvCall
 UserEnvCall: j .
 
-.global SupervisorEnvCall
 .weak SupervisorEnvCall
 SupervisorEnvCall: j .
 
-.global MachineEnvCall
 .weak MachineEnvCall
 MachineEnvCall: j .
 
-.global InstructionPageFault
 .weak InstructionPageFault
 InstructionPageFault: j .
 
-.global LoadPageFault
 .weak LoadPageFault
 LoadPageFault: j .
 
-.global StorePageFault
 .weak StorePageFault
 StorePageFault: j .
 

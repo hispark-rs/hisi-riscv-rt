@@ -49,20 +49,3 @@ chip-bs21 = ["dep:bs2x-pac"]
 boot-header = []
 
 [build-dependencies]
-
-[profile.release]
-opt-level = "s"
-lto = true
-debug = true
-
-[profile.dev]
-opt-level = "s"
-
-# Standalone builds (this repo's own CI) resolve the PACs from crates.io, where
-# ws63-pac lags and bs2x-pac is unpublished — so even the default-feature (chip-ws63)
-# resolution fails on the optional bs2x-pac. Patch both to their git sources. IGNORED
-# inside the hisi-riscv-rs workspace (only the workspace-root [patch] applies, which
-# redirects both to local crates/ paths).
-[patch.crates-io]
-ws63-pac = { git = "https://github.com/hispark-rs/ws63-pac" }
-bs2x-pac = { git = "https://github.com/hispark-rs/bs2x-pac" }
