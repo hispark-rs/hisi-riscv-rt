@@ -12,10 +12,11 @@ env:
 
 jobs:
   # hisi-riscv-rt is riscv-only: it `global_asm!`s the riscv startup and pulls the
-  # riscv crate, and it depends on ws63-pac via `path = "../ws63-pac"`. So the CI
-  # needs (a) the custom hisi-riscv toolchain, which has the riscv32imfc target builtin
-  # (`rustup target add` cannot fetch it — it is not a distributed std target),
-  # and (b) a sibling ws63-pac checkout so the path dependency resolves.
+  # riscv crate. Standalone CI deliberately resolves PAC dependencies from
+  # crates.io; local monorepo development uses the parent workspace's
+  # [patch.crates-io] instead. The only special setup here is the custom
+  # hisi-riscv toolchain, whose riscv32imfc target is builtin (`rustup target add`
+  # cannot fetch it — it is not a distributed std target).
   check:
     name: Check + Clippy + Docs (riscv32imfc)
     runs-on: ubuntu-latest
@@ -28,14 +29,12 @@ jobs:
           mkdir -p "$RUNNER_TEMP/hisi-riscv" && tar -C "$RUNNER_TEMP/hisi-riscv" -xzf tc.tar.gz
           rustup toolchain link hisi-riscv "$RUNNER_TEMP/hisi-riscv/stage2"
           rustc +hisi-riscv --version
-      - name: Checkout sibling ws63-pac (../ws63-pac path dependency)
-        run: git clone --depth 1 https://github.com/hispark-rs/ws63-pac ../ws63-pac
       - name: Check
-        run: cargo +hisi-riscv check --target "$TARGET"
+        run: cargo +hisi-riscv check --locked --target "$TARGET"
       - name: Clippy
-        run: cargo +hisi-riscv clippy --target "$TARGET" -- -D warnings
+        run: cargo +hisi-riscv clippy --locked --target "$TARGET" -- -D warnings
       - name: Docs
-        run: cargo +hisi-riscv doc --no-deps --document-private-items --target "$TARGET"
+        run: cargo +hisi-riscv doc --locked --no-deps --document-private-items --target "$TARGET"
         env:
           RUSTDOCFLAGS: -D warnings
 
@@ -47,6 +46,4 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt
-      - name: Checkout sibling ws63-pac (so cargo can read the manifest)
-        run: git clone --depth 1 https://github.com/hispark-rs/ws63-pac ../ws63-pac
       - run: cargo fmt --all -- --check

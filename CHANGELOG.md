@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- Release/CI now resolve PAC dependencies from crates.io under `--locked`; local
+  monorepo development continues to use the parent workspace's `[patch.crates-io]`
+  for local PAC checkouts.
+
 ## [0.4.0]
 
 ### Changed
