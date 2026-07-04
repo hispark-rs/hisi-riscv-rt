@@ -12,9 +12,10 @@
 //! Current adapters:
 //! - `chip-ws63`: WS63 startup, linker layout, `ws63-pac/rt` interrupt symbols,
 //!   and optional link-time boot header.
-//! - `chip-bs21`: BS2X compatibility path. BS20/BS21 examples supply their own
-//!   `memory.x` while this crate provides the shared legacy layout/startup and
-//!   `bs2x-pac/rt` provides `device.x`.
+//! - `chip-bs21` + `unstable`: BS2X compatibility path. This crate provides a
+//!   BS21/BS2X default `memory.x`, a BS2X layout adapter, legacy startup, and
+//!   `bs2x-pac/rt` provides `device.x`. BS20/custom boards should provide their
+//!   own `memory.x`.
 //!
 //! Downstream binaries should link with `-Thisi-riscv-link.x`. The old
 //! `-Tws63-link.x` name remains as a temporary compatibility alias.
@@ -24,8 +25,17 @@
 #[cfg(all(feature = "boot-header", not(feature = "chip-ws63")))]
 compile_error!("hisi-riscv-rt `boot-header` is WS63-only; enable `chip-ws63`");
 
+#[cfg(all(feature = "chip-bs21", not(feature = "unstable")))]
+compile_error!(
+    "hisi-riscv-rt: BS2X runtime support is experimental; enable `unstable` with \
+     `features = [\"chip-bs21\", \"unstable\"]`."
+);
+
 #[cfg(all(feature = "riscv-rt-start-experiment", not(feature = "chip-ws63")))]
 compile_error!("hisi-riscv-rt `riscv-rt-start-experiment` is currently WS63-only");
+
+#[cfg(all(feature = "riscv-rt-start-experiment", not(feature = "unstable")))]
+compile_error!("hisi-riscv-rt `riscv-rt-start-experiment` is experimental; enable `unstable` with it");
 
 #[cfg(feature = "chip-ws63")]
 core::arch::global_asm!(concat!(

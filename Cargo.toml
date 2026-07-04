@@ -27,13 +27,16 @@ critical-section = "1"
 [features]
 # NO default chip (esp-hal style, mirroring hisi-riscv-hal 0.5.0). The public crate
 # interface is chip-neutral, but startup/linker resources are selected by chip
-# adapters. `bundled-memory-x` only emits the WS63 memory.x when `chip-ws63` is also
-# selected; BS2X binaries supply their own memory.x. Downstream bins should link
-# with `-Thisi-riscv-link.x`; `ws63-link.x` is a temporary compatibility alias.
+# adapters. `bundled-memory-x` emits the active chip's default memory.x:
+# WS63 for `chip-ws63`, BS21/BS2X 160K L2RAM for `chip-bs21`. BS20 binaries and
+# custom boards should disable it and provide their own memory.x. Downstream bins
+# should link with `-Thisi-riscv-link.x`; `ws63-link.x` is a temporary
+# compatibility alias.
 default = ["bundled-memory-x"]
 bundled-memory-x = []
 chip-ws63 = ["dep:ws63-pac", "ws63-pac/rt"]
 chip-bs21 = ["dep:bs2x-pac", "bs2x-pac/rt"]
+unstable = []
 # boot-header (default OFF): bake the 0x300-byte WS63 HiSilicon image header into
 # the ELF at flash 0x230000, immediately before .startup at 0x230300, so the bare
 # ELF is directly bootable by flashboot after a post-link `hisi-fwpkg patch-hash`
@@ -44,7 +47,8 @@ chip-bs21 = ["dep:bs2x-pac", "bs2x-pac/rt"]
 boot-header = []
 # Reserved opt-in for the next startup experiment: let riscv-rt own the generic
 # `_start` work while the WS63 adapter keeps chip-specific trap/cache/header setup.
-# It is intentionally non-default until QEMU + HIL prove the path.
+# It is intentionally non-default and additionally requires `unstable` until
+# QEMU + HIL prove the path.
 riscv-rt-start-experiment = []
 
 [build-dependencies]

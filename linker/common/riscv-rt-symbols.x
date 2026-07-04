@@ -3,7 +3,7 @@
    riscv-rt's rlib already references these as weak extern. */
 
 /* Stack symbols */
-_stack_start = ORIGIN(SRAM) + LENGTH(SRAM);
+_stack_start = DEFINED(__stack_top__) ? __stack_top__ : ORIGIN(SRAM) + LENGTH(SRAM);
 _max_hart_id = 0;
 _hart_stack_size = DEFINED(__stack_size) ? __stack_size : 0x2000;
 

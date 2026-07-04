@@ -11,10 +11,18 @@
 
 - `chip-ws63`：使用 `asm/ws63/startup.S`、`linker/ws63/{memory.x,layout.ld}`，
   `ws63-pac/rt` 提供 `device.x`，可选 `linker/ws63/boot-header.x`。
-- `chip-bs21`：BS2X 兼容路径。示例自带 BS20/BS21 `memory.x`，`bs2x-pac/rt` 提供
-  `device.x`，本 crate 暂时复用 legacy WS63/M-core startup 和 layout。
+- `chip-bs21` + `unstable`：BS2X 兼容路径。`linker/bs2x/{memory.x,layout.ld}`
+  提供 BS21/BS2X 默认内存图与布局，`bs2x-pac/rt` 提供 `device.x`，本 crate
+  暂时复用 legacy M-core startup。BS20/自定义板卡通过关闭 `bundled-memory-x`
+  提供自己的 `memory.x` 覆盖默认。
 - Hi3322：仅有预研文档，不暴露启动 feature。TES/TEE reset、CLIC、内存分区和镜像格式
   都需要独立 adapter。
+
+## Stable / unstable
+
+稳定 surface 只包括薄 `riscv-rt` facade、WS63 默认启动/链接路径、WS63
+`boot-header`。BS2X adapter 和 `riscv-rt-start-experiment` 都要求 `unstable`：
+前者缺少 BS2X 板级 HIL，后者还未把默认 reset path 切到 `riscv-rt` `_start`。
 
 ## Linker contract
 

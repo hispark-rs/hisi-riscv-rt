@@ -10,9 +10,13 @@ fn main() {
     let bundled_memory = env::var_os("CARGO_FEATURE_BUNDLED_MEMORY_X").is_some();
     let boot_header_enabled = env::var_os("CARGO_FEATURE_BOOT_HEADER").is_some();
     let riscv_rt_start_experiment = env::var_os("CARGO_FEATURE_RISCV_RT_START_EXPERIMENT").is_some();
+    let unstable = env::var_os("CARGO_FEATURE_UNSTABLE").is_some();
 
     if chip_ws63 && chip_bs21 {
         panic!("hisi-riscv-rt features `chip-ws63` and `chip-bs21` are mutually exclusive");
+    }
+    if chip_bs21 && !unstable {
+        panic!("hisi-riscv-rt `chip-bs21` is experimental; enable `unstable` with it");
     }
     if boot_header_enabled && !chip_ws63 {
         panic!("hisi-riscv-rt `boot-header` is WS63-only; enable `chip-ws63` or disable it");
@@ -20,35 +24,64 @@ fn main() {
     if riscv_rt_start_experiment && !chip_ws63 {
         panic!("hisi-riscv-rt `riscv-rt-start-experiment` is currently WS63-only");
     }
+    if riscv_rt_start_experiment && !unstable {
+        panic!("hisi-riscv-rt `riscv-rt-start-experiment` is experimental; enable `unstable` with it");
+    }
 
-    let memory_x = Path::new("linker/ws63/memory.x");
-    let layout_ld = Path::new("linker/ws63/layout.ld");
+    let ws63_memory_x = Path::new("linker/ws63/memory.x");
+    let ws63_layout_ld = Path::new("linker/ws63/layout.ld");
+    let ws63_boot_header_x = Path::new("linker/ws63/boot-header.x");
+    let bs2x_memory_x = Path::new("linker/bs2x/memory.x");
+    let bs2x_layout_ld = Path::new("linker/bs2x/layout.ld");
+    let bs2x_boot_header_x = Path::new("linker/bs2x/boot-header.x");
     let symbols_x = Path::new("linker/common/riscv-rt-symbols.x");
-    let boot_header_x = Path::new("linker/ws63/boot-header.x");
     let startup_s = Path::new("asm/ws63/startup.S");
 
-    println!("cargo:rerun-if-changed={}", memory_x.display());
-    println!("cargo:rerun-if-changed={}", layout_ld.display());
+    println!("cargo:rerun-if-changed={}", ws63_memory_x.display());
+    println!("cargo:rerun-if-changed={}", ws63_layout_ld.display());
+    println!("cargo:rerun-if-changed={}", ws63_boot_header_x.display());
+    println!("cargo:rerun-if-changed={}", bs2x_memory_x.display());
+    println!("cargo:rerun-if-changed={}", bs2x_layout_ld.display());
+    println!("cargo:rerun-if-changed={}", bs2x_boot_header_x.display());
     println!("cargo:rerun-if-changed={}", symbols_x.display());
-    println!("cargo:rerun-if-changed={}", boot_header_x.display());
     println!("cargo:rerun-if-changed={}", startup_s.display());
 
     let layout_out = out_dir.join("layout.ld");
     let memory_out = out_dir.join("memory.x");
     let stale_device_out = out_dir.join("device.x");
     let symbols_out = out_dir.join("riscv-rt-symbols.x");
+    let boot_header_out = out_dir.join("boot-header.x");
 
-    // WS63 can use the bundled memory map. BS2X examples deliberately provide
-    // their own BS20/BS21 memory.x; copying the WS63 one there would create two
-    // competing MEMORY facts on the linker search path.
-    if bundled_memory && chip_ws63 {
-        fs::copy(memory_x, &memory_out).expect("Failed to copy WS63 memory.x");
+    let selected_memory_x = if chip_ws63 {
+        Some(ws63_memory_x)
+    } else if chip_bs21 {
+        Some(bs2x_memory_x)
+    } else {
+        None
+    };
+    let selected_layout_ld = if chip_ws63 {
+        Some(ws63_layout_ld)
+    } else if chip_bs21 {
+        Some(bs2x_layout_ld)
+    } else {
+        None
+    };
+
+    if bundled_memory {
+        if let Some(memory_x) = selected_memory_x {
+            fs::copy(memory_x, &memory_out).expect("Failed to copy selected memory.x");
+        } else if memory_out.exists() {
+            fs::remove_file(&memory_out).expect("Failed to remove stale memory.x");
+        }
+    } else if memory_out.exists() {
+        fs::remove_file(&memory_out).expect("Failed to remove stale memory.x");
     }
 
-    // The current BS2X compatibility adapter still reuses this linker layout with
-    // a BS2X-supplied memory.x. A dedicated BS2X layout can replace this at the
-    // adapter seam without changing downstream build scripts.
-    fs::copy(layout_ld, &layout_out).expect("Failed to copy layout.ld");
+    if let Some(layout_ld) = selected_layout_ld {
+        fs::copy(layout_ld, &layout_out).expect("Failed to copy selected layout.ld");
+    } else if layout_out.exists() {
+        fs::remove_file(&layout_out).expect("Failed to remove stale layout.ld");
+    }
 
     // Chip-specific `device.x` files are owned by the active PAC's `rt` feature
     // (ws63-pac/rt or bs2x-pac/rt). This crate's entry script still INCLUDEs
@@ -59,8 +92,9 @@ fn main() {
     fs::copy(symbols_x, &symbols_out).expect("Failed to copy riscv-rt-symbols.x");
 
     if boot_header_enabled {
-        let boot_header_out = out_dir.join("boot-header.x");
-        fs::copy(boot_header_x, &boot_header_out).expect("Failed to copy boot-header.x");
+        fs::copy(ws63_boot_header_x, &boot_header_out).expect("Failed to copy boot-header.x");
+    } else if boot_header_out.exists() {
+        fs::remove_file(&boot_header_out).expect("Failed to remove stale boot-header.x");
     }
 
     // Downstream binaries opt in with one neutral entry script name:

@@ -6,7 +6,7 @@
  *   ROM:      0x100000 - 0x14C000  (304K total: 36K bootrom + 268K ROM)
  *   ITCM:     0x14C000 - 0x150000  (16K default)
  *   DTCM:     0x180000 - 0x184000  (16K default)
- *   PROGRAM:  0x230300 - 0x4F0300  (~2.75MB app code in flash)
+ *   PROGRAM:  0x230300 - 0x470300  (~2.25MiB app code in flash)
  *   SRAM:     0xA00000 - 0xA90000  (576K main system RAM)
  *   FLASH:    0x200000 - 0xA00000  (8MB SPI NOR flash)
  *

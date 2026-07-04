@@ -14,6 +14,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - WS63 interrupt symbols now come from `ws63-pac/rt`, matching the BS2X
   `bs2x-pac/rt` ownership model. `hisi-riscv-rt` still `INCLUDE`s `device.x`
   from the linker entry script, but no longer carries its own WS63 copy.
+- BS2X runtime support is now explicitly `unstable` and owns a BS21/BS2X default
+  `memory.x` plus `linker/bs2x/layout.ld`; BS20/custom boards can still disable
+  `bundled-memory-x` and provide their own memory map.
 
 ## [0.4.0]
 
