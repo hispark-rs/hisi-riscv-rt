@@ -23,21 +23,19 @@ fn main() {
 
     let memory_x = Path::new("linker/ws63/memory.x");
     let layout_ld = Path::new("linker/ws63/layout.ld");
-    let device_x = Path::new("linker/ws63/device.x");
     let symbols_x = Path::new("linker/common/riscv-rt-symbols.x");
     let boot_header_x = Path::new("linker/ws63/boot-header.x");
     let startup_s = Path::new("asm/ws63/startup.S");
 
     println!("cargo:rerun-if-changed={}", memory_x.display());
     println!("cargo:rerun-if-changed={}", layout_ld.display());
-    println!("cargo:rerun-if-changed={}", device_x.display());
     println!("cargo:rerun-if-changed={}", symbols_x.display());
     println!("cargo:rerun-if-changed={}", boot_header_x.display());
     println!("cargo:rerun-if-changed={}", startup_s.display());
 
     let layout_out = out_dir.join("layout.ld");
     let memory_out = out_dir.join("memory.x");
-    let device_out = out_dir.join("device.x");
+    let stale_device_out = out_dir.join("device.x");
     let symbols_out = out_dir.join("riscv-rt-symbols.x");
 
     // WS63 can use the bundled memory map. BS2X examples deliberately provide
@@ -48,14 +46,15 @@ fn main() {
     }
 
     // The current BS2X compatibility adapter still reuses this linker layout with
-    // a BS2X-supplied memory.x and bs2x-pac's device.x. A dedicated BS2X layout can
-    // replace this at the adapter seam without changing downstream build scripts.
+    // a BS2X-supplied memory.x. A dedicated BS2X layout can replace this at the
+    // adapter seam without changing downstream build scripts.
     fs::copy(layout_ld, &layout_out).expect("Failed to copy layout.ld");
 
-    // WS63 device symbols are owned by this adapter. BS2X device symbols come from
-    // bs2x-pac's `rt` feature, so do not also emit WS63 names in that build.
-    if chip_ws63 {
-        fs::copy(device_x, &device_out).expect("Failed to copy WS63 device.x");
+    // Chip-specific `device.x` files are owned by the active PAC's `rt` feature
+    // (ws63-pac/rt or bs2x-pac/rt). This crate's entry script still INCLUDEs
+    // `device.x`, but it deliberately does not copy one into its own OUT_DIR.
+    if stale_device_out.exists() {
+        fs::remove_file(&stale_device_out).expect("Failed to remove stale runtime-owned device.x");
     }
     fs::copy(symbols_x, &symbols_out).expect("Failed to copy riscv-rt-symbols.x");
 

@@ -5,12 +5,13 @@
 //! The public crate interface is intentionally small: it re-exports the
 //! `riscv-rt` entry attributes, the selected chip PAC's interrupt enum, and the
 //! single-hart critical-section implementation configured through the `riscv`
-//! crate. Chip-specific reset code, linker fragments, interrupt symbols, and
-//! image headers live behind startup adapters.
+//! crate. Chip-specific reset code, linker fragments, and image headers live
+//! behind startup adapters. Chip interrupt symbols (`device.x`) are owned by the
+//! selected PAC's `rt` feature.
 //!
 //! Current adapters:
-//! - `chip-ws63`: WS63 startup, linker layout, interrupt `device.x`, and optional
-//!   link-time boot header.
+//! - `chip-ws63`: WS63 startup, linker layout, `ws63-pac/rt` interrupt symbols,
+//!   and optional link-time boot header.
 //! - `chip-bs21`: BS2X compatibility path. BS20/BS21 examples supply their own
 //!   `memory.x` while this crate provides the shared legacy layout/startup and
 //!   `bs2x-pac/rt` provides `device.x`.

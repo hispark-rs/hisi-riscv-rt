@@ -11,6 +11,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Release/CI now resolve PAC dependencies from crates.io under `--locked`; local
   monorepo development continues to use the parent workspace's `[patch.crates-io]`
   for local PAC checkouts.
+- WS63 interrupt symbols now come from `ws63-pac/rt`, matching the BS2X
+  `bs2x-pac/rt` ownership model. `hisi-riscv-rt` still `INCLUDE`s `device.x`
+  from the linker entry script, but no longer carries its own WS63 copy.
 
 ## [0.4.0]
 

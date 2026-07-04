@@ -12,8 +12,8 @@ This crate keeps the user-facing runtime interface small and stable:
 
 ## Adapters
 
-- `chip-ws63`: WS63 reset/trap startup, linker layout, WS63 `device.x`, and the
-  optional link-time `boot-header` image header.
+- `chip-ws63`: WS63 reset/trap startup, linker layout, `ws63-pac/rt` interrupt
+  symbols, and the optional link-time `boot-header` image header.
 - `chip-bs21`: BS2X compatibility path. BS20/BS21 examples provide their own
   `memory.x`; this crate provides the shared legacy startup/layout; `bs2x-pac/rt`
   provides BS2X `device.x`.
