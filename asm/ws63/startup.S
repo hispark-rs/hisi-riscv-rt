@@ -162,15 +162,106 @@ excp_vect_table_end:
 # ======================================================================
 #  Interrupt dispatch table (.rodata), indexed by IRQ number (mcause low bits).
 #  __rt_irq_dispatch (DIRECT-mode path) loads __INTERRUPTS[irq] and tail-calls it.
-#  Names + numbers follow the authoritative PAC ws63_pac::interrupt::ExternalInterrupt
-#  (gaps at 30, 36-39, 67-68 → DefaultHandler). Each entry is a `device.x` PROVIDE
-#  weak symbol (= DefaultHandler) the application overrides by defining a function of
-#  the same name (e.g. `#[no_mangle] extern "C" fn TIMER_INT0()`).
+#  Names + numbers follow the active PAC's ExternalInterrupt enum. Each entry is a
+#  `device.x` PROVIDE weak symbol (= DefaultHandler) the application overrides by
+#  defining a function of the same name (e.g. `#[no_mangle] extern "C" fn TIMER_INT0()`).
 # ======================================================================
 .section .rodata
 .align 4
 .global __INTERRUPTS
 __INTERRUPTS:
+.ifdef __hisi_chip_bs2x
+    .word DefaultHandler        # 0
+    .word DefaultHandler        # 1
+    .word DefaultHandler        # 2
+    .word DefaultHandler        # 3
+    .word DefaultHandler        # 4
+    .word DefaultHandler        # 5
+    .word DefaultHandler        # 6
+    .word DefaultHandler        # 7
+    .word DefaultHandler        # 8
+    .word DefaultHandler        # 9
+    .word DefaultHandler        # 10
+    .word DefaultHandler        # 11
+    .word DefaultHandler        # 12
+    .word DefaultHandler        # 13
+    .word DefaultHandler        # 14
+    .word DefaultHandler        # 15
+    .word DefaultHandler        # 16
+    .word DefaultHandler        # 17
+    .word DefaultHandler        # 18
+    .word DefaultHandler        # 19
+    .word DefaultHandler        # 20
+    .word DefaultHandler        # 21
+    .word DefaultHandler        # 22
+    .word DefaultHandler        # 23
+    .word DefaultHandler        # 24
+    .word DefaultHandler        # 25
+    .word BT_INT0               # 26
+    .word BT_INT1               # 27
+    .word GADC_DONE             # 28
+    .word GADC_ALARM            # 29
+    .word DefaultHandler        # 30 (gap)
+    .word DefaultHandler        # 31 (gap)
+    .word MCU_PCLR_LOCK         # 32
+    .word ULP_GPIO              # 33
+    .word GPIO_0                # 34
+    .word GPIO_1                # 35
+    .word BT_TOGGLE_POS         # 36
+    .word BT_TOGGLE_NEG         # 37
+    .word KEY_SCAN_LOW_POWER    # 38
+    .word UART_0                # 39
+    .word MCU_SIMO1P1_VSET      # 40
+    .word UART_1                # 41
+    .word UART_2                # 42
+    .word QSPI0_2CS             # 43
+    .word PDM                   # 44
+    .word DefaultHandler        # 45 (gap)
+    .word KEY_SCAN              # 46
+    .word M_WAKEUP              # 47
+    .word M_SLEEP               # 48
+    .word RTC_0                 # 49
+    .word RTC_1                 # 50
+    .word RTC_2                 # 51
+    .word RTC_3                 # 52
+    .word TIMER_0               # 53
+    .word TIMER_1               # 54
+    .word TIMER_2               # 55
+    .word TIMER_3               # 56
+    .word M_SDMA                # 57
+    .word DefaultHandler        # 58 (gap)
+    .word SPI_M_S_0             # 59
+    .word SPI_M_S_1             # 60
+    .word SPI_M                 # 61
+    .word I2C_0                 # 62
+    .word I2C_1                 # 63
+    .word BT_BB_BT              # 64
+    .word BT_BB_BLE             # 65
+    .word BT_BB_GLE             # 66
+    .word I2S                   # 67
+    .word RF_PRT                # 68
+    .word NFC                   # 69
+    .word SEC                   # 70
+    .word PWM_0                 # 71
+    .word PWM_1                 # 72
+    .word OSC_EN_WKUP           # 73
+    .word OSC_EN_SLEEP          # 74
+    .word DefaultHandler        # 75 (gap)
+    .word DefaultHandler        # 76 (gap)
+    .word DefaultHandler        # 77 (gap)
+    .word PMU_CMU_ERR           # 78
+    .word ULP_INT               # 79
+    .word DefaultHandler        # 80 (gap)
+    .word DefaultHandler        # 81 (gap)
+    .word DefaultHandler        # 82 (gap)
+    .word DefaultHandler        # 83 (gap)
+    .word DefaultHandler        # 84 (gap)
+    .word PMU2_CLK_32K_CALI     # 85
+    .word ULP_WKUP_INT          # 86
+    .word TSENSOR               # 87
+    .word QDEC                  # 88
+    .word USB                   # 89
+.else
     .word DefaultHandler        # 0
     .word DefaultHandler        # 1
     .word DefaultHandler        # 2
@@ -244,6 +335,7 @@ __INTERRUPTS:
     .word MEM_MONITOR_INT      # 70
     .word TCM_MONITOR_INT      # 71
     .word LSADC_INTR          # 72
+.endif
 __INTERRUPTS_end:
 .set __INTERRUPTS_len, (__INTERRUPTS_end - __INTERRUPTS) / 4
 
@@ -688,7 +780,11 @@ local_isr_dispatch:
 # prefers a single hook over per-IRQ named symbols.
 .weak __rt_irq_dispatch
 __rt_irq_dispatch:
-    li   t0, 73                 # __INTERRUPTS length (IRQ 0..72); keep in sync below
+.ifdef __hisi_chip_bs2x
+    li   t0, 90                 # BS2X __INTERRUPTS length (IRQ 0..89)
+.else
+    li   t0, 73                 # WS63 __INTERRUPTS length (IRQ 0..72)
+.endif
     bgeu a0, t0, 1f
     la   t0, __INTERRUPTS
     slli t1, a0, 2

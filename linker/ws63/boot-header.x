@@ -28,9 +28,10 @@
  * the body, which the linker cannot compute. `hisi-fwpkg patch-hash <elf>`
  * fills it post-link.
  *
- * This is INCLUDEd by ws63-link.x only when the `boot-header` feature is enabled
- * (build.rs gates it on CARGO_FEATURE_BOOT_HEADER). The default (feature-off)
- * link never sees this file, so the layout is unchanged.
+ * This is INCLUDEd by hisi-riscv-link.x only when the `boot-header` feature is
+ * enabled (build.rs gates it on CARGO_FEATURE_BOOT_HEADER). The old ws63-link.x
+ * name remains a temporary compatibility alias. The default (feature-off) link
+ * never sees this file, so the layout is unchanged.
  */
 SECTIONS
 {

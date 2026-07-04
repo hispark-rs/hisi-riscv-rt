@@ -1,7 +1,3 @@
-/// Build script for hisi-riscv-rt.
-///
-/// Copies linker scripts and device.x to OUT_DIR so they can be
-/// referenced by the linker and runtime code.
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -9,95 +5,93 @@ use std::path::{Path, PathBuf};
 fn main() {
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
 
-    // Copy linker scripts for the linker
-    let memory_x = Path::new("memory.x");
-    let layout_ld = Path::new("layout.ld");
-    let device_x = Path::new("device.x");
-    let symbols_x = Path::new("riscv-rt-symbols.x");
+    let chip_ws63 = env::var_os("CARGO_FEATURE_CHIP_WS63").is_some();
+    let chip_bs21 = env::var_os("CARGO_FEATURE_CHIP_BS21").is_some();
+    let bundled_memory = env::var_os("CARGO_FEATURE_BUNDLED_MEMORY_X").is_some();
+    let boot_header_enabled = env::var_os("CARGO_FEATURE_BOOT_HEADER").is_some();
+    let riscv_rt_start_experiment = env::var_os("CARGO_FEATURE_RISCV_RT_START_EXPERIMENT").is_some();
 
-    println!("cargo:rerun-if-changed=memory.x");
-    println!("cargo:rerun-if-changed=layout.ld");
-    println!("cargo:rerun-if-changed=device.x");
-    println!("cargo:rerun-if-changed=riscv-rt-symbols.x");
-    println!("cargo:rerun-if-changed=boot-header.x");
-    println!("cargo:rerun-if-changed=asm/startup.S");
+    if chip_ws63 && chip_bs21 {
+        panic!("hisi-riscv-rt features `chip-ws63` and `chip-bs21` are mutually exclusive");
+    }
+    if boot_header_enabled && !chip_ws63 {
+        panic!("hisi-riscv-rt `boot-header` is WS63-only; enable `chip-ws63` or disable it");
+    }
+    if riscv_rt_start_experiment && !chip_ws63 {
+        panic!("hisi-riscv-rt `riscv-rt-start-experiment` is currently WS63-only");
+    }
 
-    // Place linker scripts in OUT_DIR and use absolute paths
+    let memory_x = Path::new("linker/ws63/memory.x");
+    let layout_ld = Path::new("linker/ws63/layout.ld");
+    let device_x = Path::new("linker/ws63/device.x");
+    let symbols_x = Path::new("linker/common/riscv-rt-symbols.x");
+    let boot_header_x = Path::new("linker/ws63/boot-header.x");
+    let startup_s = Path::new("asm/ws63/startup.S");
+
+    println!("cargo:rerun-if-changed={}", memory_x.display());
+    println!("cargo:rerun-if-changed={}", layout_ld.display());
+    println!("cargo:rerun-if-changed={}", device_x.display());
+    println!("cargo:rerun-if-changed={}", symbols_x.display());
+    println!("cargo:rerun-if-changed={}", boot_header_x.display());
+    println!("cargo:rerun-if-changed={}", startup_s.display());
+
     let layout_out = out_dir.join("layout.ld");
     let memory_out = out_dir.join("memory.x");
     let device_out = out_dir.join("device.x");
     let symbols_out = out_dir.join("riscv-rt-symbols.x");
 
-    // memory.x is bundled only when the `bundled-memory-x` feature is on (default).
-    // A downstream binary with `default-features = false` supplies its own memory.x
-    // (on its own link-search path), so we must NOT also drop ours — that would put
-    // two `memory.x` on the path and make `INCLUDE memory.x` order-dependent.
-    if env::var_os("CARGO_FEATURE_BUNDLED_MEMORY_X").is_some() {
-        fs::copy(memory_x, &memory_out).expect("Failed to copy memory.x");
+    // WS63 can use the bundled memory map. BS2X examples deliberately provide
+    // their own BS20/BS21 memory.x; copying the WS63 one there would create two
+    // competing MEMORY facts on the linker search path.
+    if bundled_memory && chip_ws63 {
+        fs::copy(memory_x, &memory_out).expect("Failed to copy WS63 memory.x");
     }
+
+    // The current BS2X compatibility adapter still reuses this linker layout with
+    // a BS2X-supplied memory.x and bs2x-pac's device.x. A dedicated BS2X layout can
+    // replace this at the adapter seam without changing downstream build scripts.
     fs::copy(layout_ld, &layout_out).expect("Failed to copy layout.ld");
-    // device.x carries the WS63 interrupt vector names. Under chip-bs21 the BS21
-    // vectors come from bs2x-pac's device.x (its rt feature), so we must NOT also
-    // drop the WS63 one — that would put two `device.x` on the path and make
-    // `INCLUDE device.x` order-dependent (WS63 names vs BS21 names).
-    if env::var_os("CARGO_FEATURE_CHIP_WS63").is_some() {
-        fs::copy(device_x, &device_out).expect("Failed to copy device.x");
+
+    // WS63 device symbols are owned by this adapter. BS2X device symbols come from
+    // bs2x-pac's `rt` feature, so do not also emit WS63 names in that build.
+    if chip_ws63 {
+        fs::copy(device_x, &device_out).expect("Failed to copy WS63 device.x");
     }
     fs::copy(symbols_x, &symbols_out).expect("Failed to copy riscv-rt-symbols.x");
 
-    // boot-header (default OFF): when the `boot-header` feature is on, drop the
-    // boot-header.x fragment into OUT_DIR and INCLUDE it. It places the 0x300-byte
-    // `.boot_header` section (src/boot_header.rs's BOOT_HEADER static) at flash
-    // 0x230000 so it ends exactly where .startup begins at ORIGIN(PROGRAM)=0x230300,
-    // making the bare ELF directly bootable (no `hisi-fwpkg image` step). When the
-    // feature is off this fragment is neither copied nor INCLUDEd, so the layout is
-    // byte-unchanged.
-    let boot_header_enabled = env::var_os("CARGO_FEATURE_BOOT_HEADER").is_some();
     if boot_header_enabled {
-        let boot_header_x = Path::new("boot-header.x");
         let boot_header_out = out_dir.join("boot-header.x");
         fs::copy(boot_header_x, &boot_header_out).expect("Failed to copy boot-header.x");
     }
 
-    // Single entry script that INCLUDEs the linker scripts in the required order
-    // (layout → memory → device → symbols, with boot-header first when on).
-    // Downstream binaries opt in with one `-Tws63-link.x` (see
-    // ws63-examples/blinky/build.rs).
-    let link_out = out_dir.join("ws63-link.x");
-    // Order matters: MEMORY (memory.x) must precede the SECTIONS that reference its
-    // regions (layout.ld); device.x PROVIDEs reference layout symbols, so it follows;
-    // riscv-rt symbol defaults come last. boot-header.x (when enabled) is INCLUDEd
-    // first — its absolute-address `.boot_header` output section is merged into the
-    // final SECTIONS and does not depend on memory.x's MEMORY {} block.
-    let mut link_contents =
-        String::from("/* Auto-generated by hisi-riscv-rt/build.rs. Entry linker script for WS63 binaries. */\n");
+    // Downstream binaries opt in with one neutral entry script name:
+    // `-Thisi-riscv-link.x`. `ws63-link.x` remains as a temporary compatibility
+    // alias for older examples and external applications.
+    let link_out = out_dir.join("hisi-riscv-link.x");
+    let compat_link_out = out_dir.join("ws63-link.x");
+    let mut link_contents = String::from("/* Auto-generated by hisi-riscv-rt/build.rs. */\n");
     link_contents.push_str(
         "INCLUDE memory.x\n\
          INCLUDE layout.ld\n\
          INCLUDE device.x\n\
          INCLUDE riscv-rt-symbols.x\n",
     );
-    // boot-header.x is INCLUDEd LAST: its `.boot_header` output section is placed
-    // at the absolute address 0x230000 (inside FLASH), independent of layout.ld's
-    // regions. Including it after layout.ld keeps layout.ld's ordering of the
-    // PROGRAM sections (.startup/.text/orphans like .eh_frame) established first, so
-    // the absolute-addressed header does not perturb lld's orphan-section placement.
     if boot_header_enabled {
         link_contents.push_str("INCLUDE boot-header.x\n");
     }
-    fs::write(&link_out, link_contents).expect("Failed to write ws63-link.x");
+    fs::write(&link_out, &link_contents).expect("Failed to write hisi-riscv-link.x");
 
-    // Expose OUT_DIR as a linker search path. Unlike `rustc-link-arg`, a
-    // `rustc-link-search` from a *library* dependency DOES propagate to the
-    // downstream binary's link, so `-Tws63-link.x` (and the INCLUDEs inside it)
-    // resolve against this directory.
+    let mut compat_contents = String::from("/* Deprecated compatibility alias. Use -Thisi-riscv-link.x instead. */\n");
+    compat_contents.push_str(&link_contents);
+    fs::write(&compat_link_out, compat_contents).expect("Failed to write ws63-link.x");
+
     println!("cargo:rustc-link-search={}", out_dir.display());
 
-    // (startup.S is now included via global_asm! in lib.rs)
-
-    // Set RISC-V base ISA for riscv-rt (rv32i — no atomic extension)
     println!("cargo:rustc-env=RISCV_RT_BASE_ISA=rv32i");
 
-    // Custom cfg for WS63-specific code
-    println!("cargo:rustc-cfg=target_chip=\"ws63\"");
+    if chip_ws63 {
+        println!("cargo:rustc-cfg=target_chip=\"ws63\"");
+    } else if chip_bs21 {
+        println!("cargo:rustc-cfg=target_chip=\"bs2x\"");
+    }
 }

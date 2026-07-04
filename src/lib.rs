@@ -1,75 +1,60 @@
-//! # hisi-riscv-rt — Runtime for HiSilicon WS63 (RISC-V RV32IMFC_Zicsr)
+//! # hisi-riscv-rt
 //!
-//! Provides:
-//! - Assembly startup (reset vector, trap vector, interrupt dispatchers)
-//! - BSS zeroing and data copy from flash to RAM
-//! - Physical Memory Protection (PMP) configuration
-//! - Custom interrupt controller (SYS_CTL1) support
-//! - Exception handlers with debug output
-//! - Stack setup (user, IRQ, exception, NMI stacks)
+//! Runtime entry support for HiSilicon RISC-V firmware.
 //!
-//! ## Usage
+//! The public crate interface is intentionally small: it re-exports the
+//! `riscv-rt` entry attributes, the selected chip PAC's interrupt enum, and the
+//! single-hart critical-section implementation configured through the `riscv`
+//! crate. Chip-specific reset code, linker fragments, interrupt symbols, and
+//! image headers live behind startup adapters.
 //!
-//! ```ignore
-//! #![no_std]
-//! #![no_main]
+//! Current adapters:
+//! - `chip-ws63`: WS63 startup, linker layout, interrupt `device.x`, and optional
+//!   link-time boot header.
+//! - `chip-bs21`: BS2X compatibility path. BS20/BS21 examples supply their own
+//!   `memory.x` while this crate provides the shared legacy layout/startup and
+//!   `bs2x-pac/rt` provides `device.x`.
 //!
-//! use hisi_riscv_rt::entry;
-//!
-//! #[entry]
-//! fn main() -> ! {
-//!     loop { /* your code */ }
-//! }
-//! ```
-//!
-//! ## Memory Layout
-//!
-//! | Region | Start | Size | Purpose |
-//! |--------|-------|------|---------|
-//! | BOOTROM | 0x100000 | 36K | Mask ROM boot |
-//! | ROM | 0x109000 | 268K | Application ROM (patch table, ROM-ram-cb) |
-//! | ITCM | 0x14C000 | 16K-64K | Instruction TCM |
-//! | DTCM | 0x180000 | 16K-64K | Data TCM |
-//! | PROGRAM | 0x230300 | ~2MB | Application code in flash |
-//! | SRAM | 0xA00000 | 512K-576K | Main system RAM |
-//! | FLASH | 0x200000 | 8MB | External SPI NOR flash |
+//! Downstream binaries should link with `-Thisi-riscv-link.x`. The old
+//! `-Tws63-link.x` name remains as a temporary compatibility alias.
 
 #![no_std]
 
-// Include assembly startup code via global_asm!
-core::arch::global_asm!(include_str!("../asm/startup.S"));
+#[cfg(all(feature = "boot-header", not(feature = "chip-ws63")))]
+compile_error!("hisi-riscv-rt `boot-header` is WS63-only; enable `chip-ws63`");
 
-pub mod startup;
+#[cfg(all(feature = "riscv-rt-start-experiment", not(feature = "chip-ws63")))]
+compile_error!("hisi-riscv-rt `riscv-rt-start-experiment` is currently WS63-only");
 
-/// Link-time WS63 boot header (`boot-header` feature). Bakes the `0x300`-byte
-/// HiSilicon image header into the ELF at flash `0x230000` so the bare ELF is
-/// directly bootable by flashboot (no `hisi-fwpkg image` step). See the module
-/// docs for the header layout and field choices.
+#[cfg(feature = "chip-ws63")]
+core::arch::global_asm!(concat!(
+    ".set __hisi_chip_ws63, 1\n",
+    include_str!("../asm/ws63/startup.S")
+));
+
+#[cfg(feature = "chip-bs21")]
+core::arch::global_asm!(concat!(
+    ".set __hisi_chip_bs2x, 1\n",
+    include_str!("../asm/ws63/startup.S")
+));
+
+pub mod rt_core;
+
+pub(crate) mod chips;
+
 #[cfg(feature = "boot-header")]
 pub mod boot_header;
 
 #[cfg(feature = "chip-bs21")]
 pub use bs2x_pac::interrupt;
-/// Re-export the active PAC's interrupt types for user convenience.
 #[cfg(feature = "chip-ws63")]
 pub use ws63_pac::interrupt;
 
-/// Entry point attribute.
-///
-/// Place on the user's `fn main() -> !` to mark it as the program entry.
-/// The function will be called after runtime initialization completes.
-///
-/// ```ignore
-/// #[hisi_riscv_rt::entry]
-/// fn main() -> ! {
-///     loop {}
-/// }
-/// ```
-pub use riscv_rt::entry;
+pub use rt_core::{entry, pre_init};
 
 /// Prelude: commonly used runtime types.
 pub mod prelude {
-    pub use crate::entry;
+    pub use crate::{entry, pre_init};
     #[cfg(feature = "chip-bs21")]
     pub use bs2x_pac::interrupt::ExternalInterrupt as Interrupt;
     #[cfg(feature = "chip-ws63")]

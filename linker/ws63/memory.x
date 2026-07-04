@@ -67,7 +67,7 @@ PROVIDE(_max_hart_id = 0);
 PROVIDE(_hart_stack_size = 0x2000);
 
 /* IRQ/exception/NMI stack tops are defined authoritatively in layout.ld's
-   .stacks section (the trap handlers in asm/startup.S reference them, and the
+   .stacks section (the trap handlers in asm/ws63/startup.S reference them, and the
    KEEP'd .trap sections keep those references alive through --gc-sections).
    The earlier top-of-SRAM fallbacks here were removed: they overlapped the
    .heap region. See layout.ld .stacks. */
@@ -87,4 +87,3 @@ REGION_ALIAS("REGION_DATA", SRAM);
 REGION_ALIAS("REGION_BSS", SRAM);
 REGION_ALIAS("REGION_STACK", SRAM);
 REGION_ALIAS("REGION_HEAP", SRAM);
-

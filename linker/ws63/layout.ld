@@ -130,7 +130,7 @@ SECTIONS
 
     /* Trap vector table + handlers. Placed explicitly (KEEP) so the vectored
        table base is deterministically 64-byte aligned (mtvec is set to this base
-       in vectored mode — see asm/startup.S) and the per-entry `j` trampolines
+       in vectored mode — see asm/ws63/startup.S) and the per-entry `j` trampolines
        stay contiguous + in range. Previously these were orphan sections, which
        was fragile (alignment/range) and let --gc-sections drop the trampolines
        and the trap-stack-top symbol references. `.trap` (the table) must be first. */
@@ -215,7 +215,7 @@ SECTIONS
 
         /* IRQ / exception / NMI stacks, carved downward from here (between the
            user stack and the heap). The *_stack_top__ symbols (used by the trap
-           handlers in asm/startup.S, which switch sp to them) are defined HERE as
+           handlers in asm/ws63/startup.S, which switch sp to them) are defined HERE as
            the single source of truth — they survive --gc-sections because the
            KEEP'd .trap handlers reference them. The earlier top-of-SRAM fallbacks
            in memory.x were removed: they pointed into the .heap region (a latent
