@@ -43,14 +43,9 @@ unsafe fn relocate_data() {
     unsafe {
         macro_rules! copy_region {
             ($load:ident, $begin:ident, $end:ident) => {
-                let count =
-                    &raw const $end as usize - &raw const $begin as usize;
+                let count = &raw const $end as usize - &raw const $begin as usize;
                 if count > 0 {
-                    core::ptr::copy_nonoverlapping(
-                        &raw const $load as *const u8,
-                        &raw mut $begin as *mut u8,
-                        count,
-                    );
+                    core::ptr::copy_nonoverlapping(&raw const $load as *const u8, &raw mut $begin as *mut u8, count);
                 }
             };
         }

@@ -118,7 +118,6 @@ fn main() {
     }
     fs::write(&link_out, &link_contents).expect("Failed to write hisi-riscv-link.x");
 
-    
     // ---- riscv-rt-start-experiment: compile assembly via cc ----
     // Avoids LTO/global_asm! conflicts with riscv-rt's weak __pre_init and
     // _setup_interrupts. The compiled .o is linked directly as a native object,
@@ -130,19 +129,23 @@ fn main() {
 
         let status = std::process::Command::new(cc)
             .args([
-                "-x", "assembler-with-cpp",
+                "-x",
+                "assembler-with-cpp",
                 "-c",
                 "-march=rv32imfc",
                 "-mabi=ilp32f",
-                "-o", obj_path.to_str().unwrap(),
+                "-o",
+                obj_path.to_str().unwrap(),
                 asm_path.to_str().unwrap(),
             ])
             .status()
             .unwrap_or_else(|e| panic!("Failed to run {}: {}", cc, e));
 
-        if !status.success() {{
-            panic!("{} failed to compile {}", cc, asm_path.display());
-        }}
+        if !status.success() {
+            {
+                panic!("{} failed to compile {}", cc, asm_path.display());
+            }
+        }
 
         println!("cargo:rustc-link-arg={}", obj_path.display());
         println!("cargo:rerun-if-changed={}", asm_path.display());
