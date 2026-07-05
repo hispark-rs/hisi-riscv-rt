@@ -17,7 +17,6 @@
 //!   `bs2x-pac/rt` provides `device.x`. BS20/custom boards should provide their
 //!   own `memory.x`.
 //!
-//! Downstream binaries should link with `-Thisi-riscv-link.x`. The old
 //! Downstream binaries should link with `-Thisi-riscv-link.x`.
 
 #![no_std]
@@ -37,13 +36,27 @@ compile_error!("hisi-riscv-rt `riscv-rt-start-experiment` is currently WS63-only
 #[cfg(all(feature = "riscv-rt-start-experiment", not(feature = "unstable")))]
 compile_error!("hisi-riscv-rt `riscv-rt-start-experiment` is experimental; enable `unstable` with it");
 
-#[cfg(feature = "chip-ws63")]
+// ---- Default startup path: custom asm/ws63/startup.S ----
+#[cfg(all(feature = "chip-ws63", not(feature = "riscv-rt-start-experiment")))]
 core::arch::global_asm!(concat!(
     ".set __hisi_chip_ws63, 1\n",
     include_str!("../asm/ws63/startup.S")
 ));
 
-#[cfg(feature = "chip-bs21")]
+// ---- Experimental path: riscv-rt _start + WS63 overrides ----
+// When riscv-rt-start-experiment is enabled, we defer to riscv-rt's _start
+// (which handles GPR zero, GP/SP, .data/.bss, FPU) and provide:
+//   - __pre_init: WS63 PMP, cache, stack canary
+//   - _setup_interrupts: WS63 mtvec + MIE bits
+//   - trap_vector + all trap/IRQ handlers (WS63 direct-mode dispatch)
+// The ROM/TCM/SRAM multi-region relocation is still handled by runtime_init,
+// called from __pre_init via our Rust startup adapter.
+// When riscv-rt-start-experiment is enabled, all WS63 startup assembly
+// (__pre_init, _setup_interrupts, trap_vector, default handlers) is compiled
+// via build.rs+cc into a separate .o to avoid LTO symbol conflicts with
+// riscv-rt's weak defaults. See asm/ws63/startup_riscvrt.S.
+
+#[cfg(all(feature = "chip-bs21", not(feature = "riscv-rt-start-experiment")))]
 core::arch::global_asm!(concat!(
     ".set __hisi_chip_bs2x, 1\n",
     include_str!("../asm/ws63/startup.S")

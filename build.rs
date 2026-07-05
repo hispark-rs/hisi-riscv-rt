@@ -29,7 +29,11 @@ fn main() {
     }
 
     let ws63_memory_x = Path::new("linker/ws63/memory.x");
-    let ws63_layout_ld = Path::new("linker/ws63/layout.ld");
+    let ws63_layout_ld = if riscv_rt_start_experiment {
+        Path::new("linker/ws63/layout_riscvrt.ld")
+    } else {
+        Path::new("linker/ws63/layout.ld")
+    };
     let ws63_boot_header_x = Path::new("linker/ws63/boot-header.x");
     let bs2x_memory_x = Path::new("linker/bs2x/memory.x");
     let bs2x_layout_ld = Path::new("linker/bs2x/layout.ld");
@@ -45,6 +49,8 @@ fn main() {
     println!("cargo:rerun-if-changed={}", bs2x_boot_header_x.display());
     println!("cargo:rerun-if-changed={}", symbols_x.display());
     println!("cargo:rerun-if-changed={}", startup_s.display());
+    let startup_riscvrt_s = Path::new("asm/ws63/startup_riscvrt.S");
+    println!("cargo:rerun-if-changed={}", startup_riscvrt_s.display());
 
     let layout_out = out_dir.join("layout.ld");
     let memory_out = out_dir.join("memory.x");
@@ -111,6 +117,36 @@ fn main() {
         link_contents.push_str("INCLUDE boot-header.x\n");
     }
     fs::write(&link_out, &link_contents).expect("Failed to write hisi-riscv-link.x");
+
+    
+    // ---- riscv-rt-start-experiment: compile assembly via cc ----
+    // Avoids LTO/global_asm! conflicts with riscv-rt's weak __pre_init and
+    // _setup_interrupts. The compiled .o is linked directly as a native object,
+    // which bypasses the LLVM LTO merge that would otherwise see duplicate symbols.
+    if riscv_rt_start_experiment {
+        let asm_path = Path::new("asm/ws63/startup_riscvrt.S");
+        let obj_path = out_dir.join("startup_riscvrt.o");
+        let cc = "riscv64-unknown-elf-gcc";
+
+        let status = std::process::Command::new(cc)
+            .args([
+                "-x", "assembler-with-cpp",
+                "-c",
+                "-march=rv32imfc",
+                "-mabi=ilp32f",
+                "-o", obj_path.to_str().unwrap(),
+                asm_path.to_str().unwrap(),
+            ])
+            .status()
+            .unwrap_or_else(|e| panic!("Failed to run {}: {}", cc, e));
+
+        if !status.success() {{
+            panic!("{} failed to compile {}", cc, asm_path.display());
+        }}
+
+        println!("cargo:rustc-link-arg={}", obj_path.display());
+        println!("cargo:rerun-if-changed={}", asm_path.display());
+    }
 
     println!("cargo:rustc-link-search={}", out_dir.display());
 

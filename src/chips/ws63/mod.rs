@@ -1,9 +1,14 @@
 //! WS63 startup adapter.
 //!
-//! This adapter owns the current reset path, trap dispatch, cache setup, and
-//! relocation code used by WS63 firmware. WS63 interrupt symbols are supplied by
-//! `ws63-pac/rt`. BS2X temporarily reuses this legacy startup implementation
-//! while supplying its own memory map and `bs2x-pac/rt` `device.x`; keep new
-//! WS63-only assumptions documented here or behind `feature = "chip-ws63"`.
+//! Default path (`chip-ws63` without `riscv-rt-start-experiment`):
+//!   asm/ws63/startup.S → runtime_init() (Rust) → main()
+//!
+//! Experimental path (`chip-ws63` + `riscv-rt-start-experiment`):
+//!   riscv-rt _start → __pre_init (PMP/cache/canary) → .data/.bss/FPU →
+//!   _setup_interrupts → runtime_init_riscvrt (ROM/TCM/SRAM reloc, MIE) →
+//!   mtvec set → j main
 
-pub(crate) mod startup;
+#[cfg(feature = "riscv-rt-start-experiment")]
+mod startup_riscvrt;
+#[cfg(not(feature = "riscv-rt-start-experiment"))]
+mod startup;

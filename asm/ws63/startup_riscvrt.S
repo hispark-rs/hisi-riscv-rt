@@ -1,0 +1,551 @@
+# ----------------------------------------------------------------------
+#  WS63 startup assembly for riscv-rt-start-experiment
+#
+#  Compiled via cc (not global_asm!) to avoid LTO symbol conflicts with
+#  riscv-rt's weak __pre_init and _setup_interrupts defaults.
+#
+#  riscv-rt's _start handles: GPR zeroing, GP/SP/FP init, .data copy,
+#  .bss zero, FPU init. This file provides:
+#
+#    __pre_init       — PMP disable, I/D-cache enable, stack canary
+#    _setup_interrupts — call runtime_init_riscvrt (ROM/TCM/SRAM reloc,
+#                        MIE), set mtvec → trap_vector
+#    trap_vector + all IRQ/exception handlers + __INTERRUPTS table
+#    global_interrupt_lock/unlock/restore (for critical-section)
+# ----------------------------------------------------------------------
+
+.section .text.riscvrt_pre_init, "ax"
+.global __pre_init
+__pre_init:
+    csrw  pmpcfg0, zero
+    csrw  pmpcfg1, zero
+    csrw  pmpcfg2, zero
+    csrw  pmpcfg3, zero
+
+    li    t0, 0b11
+    csrw  0x7C0, t0
+    csrw  0x7C1, t0
+
+    la    t0, __stack_start__
+    la    t1, __stack_top__
+    beq   t0, t1, 1f
+    li    t2, 0xefbeadde
+0:  sw    t2, 0(t0)
+    addi  t0, t0, 4
+    blt   t0, t1, 0b
+1:  ret
+
+
+.section .text.riscvrt_setup, "ax"
+.global _setup_interrupts
+_setup_interrupts:
+    addi sp, sp, -8
+    sw   ra, 0(sp)
+    call runtime_init_riscvrt
+    lw   ra, 0(sp)
+    addi sp, sp, 8
+    la   t0, trap_vector
+    csrw mtvec, t0
+    ret
+
+
+# ======================================================================
+#  Trap vector table
+# ======================================================================
+.section .trap, "ax"
+.align 6
+
+.global trap_vector
+trap_vector:
+.option norvc
+    j trap_entry              # 0
+    j default_handler         # 1
+    j default_handler         # 2
+    j default_handler         # 3
+    j default_handler         # 4
+    j default_handler         # 5
+    j default_handler         # 6
+    j default_handler         # 7
+    j default_handler         # 8
+    j default_handler         # 9
+    j default_handler         # 10
+    j default_handler         # 11
+    j nmi_vector              # 12
+    j default_handler         # 13
+    j default_handler         # 14
+    j default_handler         # 15
+    j default_handler         # 16
+    j default_handler         # 17
+    j default_handler         # 18
+    j default_handler         # 19
+    j default_handler         # 20
+    j default_handler         # 21
+    j default_handler         # 22
+    j default_handler         # 23
+    j default_handler         # 24
+    j default_handler         # 25
+    j mie_interrupt0_handler  # 26
+    j mie_interrupt1_handler  # 27
+    j mie_interrupt2_handler  # 28
+    j mie_interrupt3_handler  # 29
+    j mie_interrupt4_handler  # 30
+    j mie_interrupt5_handler  # 31
+.rept 60
+    j local_interrupt_handler
+.endr
+.option rvc
+
+
+# ======================================================================
+#  Exception vectors jump table
+# ======================================================================
+.section .rodata
+.align 4
+.global excp_vect_table
+excp_vect_table:
+    .word do_insn_misaligned
+    .word do_insn_fault
+    .word do_insn_illegal
+    .word do_breakpoint
+    .word do_load_misaligned
+    .word do_load_fault
+    .word do_store_misaligned
+    .word do_store_fault
+    .word do_ecall_u
+    .word do_ecall_s
+    .word do_ecall_m
+    .word do_insn_page_fault
+    .word do_load_page_fault
+    .word do_store_page_fault
+
+
+# ======================================================================
+#  Push/pop register macros
+# ======================================================================
+.macro push_reg
+    addi sp, sp, -34 * 4
+    sw x1,  4 * 0(sp)
+    sw x4,  4 * 1(sp)
+    sw x5,  4 * 2(sp)
+    sw x6,  4 * 3(sp)
+    sw x7,  4 * 4(sp)
+    sw x8,  4 * 5(sp)
+    sw x9,  4 * 6(sp)
+    sw x10, 4 * 7(sp)
+    sw x11, 4 * 8(sp)
+    sw x12, 4 * 9(sp)
+    sw x13, 4 * 10(sp)
+    sw x14, 4 * 11(sp)
+    sw x15, 4 * 12(sp)
+    sw x16, 4 * 13(sp)
+    sw x17, 4 * 14(sp)
+    sw x18, 4 * 15(sp)
+    sw x19, 4 * 16(sp)
+    sw x20, 4 * 17(sp)
+    sw x21, 4 * 18(sp)
+    sw x22, 4 * 19(sp)
+    sw x23, 4 * 20(sp)
+    sw x24, 4 * 21(sp)
+    sw x25, 4 * 22(sp)
+    sw x26, 4 * 23(sp)
+    sw x27, 4 * 24(sp)
+    sw x28, 4 * 25(sp)
+    sw x29, 4 * 26(sp)
+    sw x30, 4 * 27(sp)
+    sw x31, 4 * 28(sp)
+    csrr t0, mepc
+    sw t0,  4 * 29(sp)
+    csrr t0, mstatus
+    sw t0,  4 * 30(sp)
+    csrr t0, mcause
+    sw t0,  4 * 31(sp)
+    csrr t0, mtval
+    sw t0,  4 * 32(sp)
+    csrr t0, mscratch
+    sw t0,  4 * 33(sp)
+.endm
+
+.macro pop_reg
+    lw t0,  4 * 33(sp)
+    csrw mscratch, t0
+    lw t0,  4 * 32(sp)
+    csrw mtval, t0
+    lw t0,  4 * 31(sp)
+    csrw mcause, t0
+    lw t0,  4 * 30(sp)
+    csrw mstatus, t0
+    lw t0,  4 * 29(sp)
+    csrw mepc, t0
+    lw x31, 4 * 28(sp)
+    lw x30, 4 * 27(sp)
+    lw x29, 4 * 26(sp)
+    lw x28, 4 * 25(sp)
+    lw x27, 4 * 24(sp)
+    lw x26, 4 * 23(sp)
+    lw x25, 4 * 22(sp)
+    lw x24, 4 * 21(sp)
+    lw x23, 4 * 20(sp)
+    lw x22, 4 * 19(sp)
+    lw x21, 4 * 18(sp)
+    lw x20, 4 * 17(sp)
+    lw x19, 4 * 16(sp)
+    lw x18, 4 * 15(sp)
+    lw x17, 4 * 14(sp)
+    lw x16, 4 * 13(sp)
+    lw x15, 4 * 12(sp)
+    lw x14, 4 * 11(sp)
+    lw x13, 4 * 10(sp)
+    lw x12, 4 * 9(sp)
+    lw x11, 4 * 8(sp)
+    lw x10, 4 * 7(sp)
+    lw x9,  4 * 6(sp)
+    lw x8,  4 * 5(sp)
+    lw x7,  4 * 4(sp)
+    lw x6,  4 * 3(sp)
+    lw x5,  4 * 2(sp)
+    lw x4,  4 * 1(sp)
+    lw x1,  4 * 0(sp)
+    addi sp, sp, 34 * 4
+.endm
+
+
+# ======================================================================
+#  Trap entry + handlers
+# ======================================================================
+.section .trap.exception, "ax"
+trap_entry:
+    push_reg
+    csrr a0, mcause
+    csrr a1, mepc
+    csrr a2, mtval
+    la   t0, excp_vect_table
+    andi a0, a0, 0x1F
+    slli a0, a0, 2
+    add  t0, t0, a0
+    lw   t0, 0(t0)
+    jalr ra, t0, 0
+    pop_reg
+    mret
+
+.section .trap.nmi, "ax"
+nmi_vector:
+    push_reg
+    csrw mscratch, sp
+    la   sp, __nmi_stack_top__
+    call nmi_handler
+    csrr sp, mscratch
+    pop_reg
+    mret
+
+.macro mie_handler num label
+.section .trap.mie\num, "ax"
+mie_interrupt\num\()_handler:
+    push_reg
+    csrw mscratch, sp
+    la   sp, __irq_stack_top__
+    li   a0, \label
+    call __rt_irq_dispatch
+    csrr sp, mscratch
+    li   t0, 0x1880
+    csrs mstatus, t0
+    pop_reg
+    mret
+.endm
+
+mie_handler 0 26
+mie_handler 1 27
+mie_handler 2 28
+mie_handler 3 29
+mie_handler 4 30
+mie_handler 5 31
+
+.section .trap.local, "ax"
+local_interrupt_handler:
+    push_reg
+    csrw mscratch, sp
+    la   sp, __irq_stack_top__
+    call local_isr_dispatch
+    csrr sp, mscratch
+    li   t0, 0x1880
+    csrs mstatus, t0
+    pop_reg
+    mret
+
+
+# ======================================================================
+#  Global interrupt lock/unlock/restore
+# ======================================================================
+.section .text
+.global global_interrupt_lock
+global_interrupt_lock:
+    csrr a0, mstatus
+    li   t0, 0x08
+    csrrc zero, mstatus, t0
+    ret
+
+.global global_interrupt_unlock
+global_interrupt_unlock:
+    csrr a0, mstatus
+    li   t0, 0x08
+    csrrs zero, mstatus, t0
+    ret
+
+.global global_interrupt_restore
+global_interrupt_restore:
+    csrw mstatus, a0
+    ret
+
+
+# ======================================================================
+#  Default handlers (weak)
+# ======================================================================
+.section .text.default_handlers, "ax"
+
+.global _max_hart_id
+_max_hart_id: .4byte 0
+
+.global _hart_stack_size
+_hart_stack_size: .4byte 0x2000
+
+.global _stack_start
+_stack_start: .4byte 0xA90000
+
+.weak default_handler
+default_handler: j .
+
+.weak default_exc_handler
+default_exc_handler: j .
+
+.weak nmi_handler
+nmi_handler: ret
+
+.weak mie0_interrupt_handler
+mie0_interrupt_handler: ret
+
+.weak mie1_interrupt_handler
+mie1_interrupt_handler: ret
+
+.weak mie2_interrupt_handler
+mie2_interrupt_handler: ret
+
+.weak mie3_interrupt_handler
+mie3_interrupt_handler: ret
+
+.weak mie4_interrupt_handler
+mie4_interrupt_handler: ret
+
+.weak mie5_interrupt_handler
+mie5_interrupt_handler: ret
+
+.weak local_isr_dispatch
+local_isr_dispatch: ret
+
+.weak __rt_irq_dispatch
+__rt_irq_dispatch:
+    li   t0, 73
+    bgeu a0, t0, 1f
+    la   t0, __INTERRUPTS
+    slli t1, a0, 2
+    add  t0, t0, t1
+    lw   t0, 0(t0)
+    jr   t0
+1:  ret
+
+.weak do_insn_misaligned
+do_insn_misaligned: j default_exc_handler
+.weak do_insn_fault
+do_insn_fault: j default_exc_handler
+.weak do_insn_illegal
+do_insn_illegal: j default_exc_handler
+.weak do_breakpoint
+do_breakpoint: j default_exc_handler
+.weak do_load_misaligned
+do_load_misaligned: j default_exc_handler
+.weak do_load_fault
+do_load_fault: j default_exc_handler
+.weak do_store_misaligned
+do_store_misaligned: j default_exc_handler
+.weak do_store_fault
+do_store_fault: j default_exc_handler
+.weak do_ecall_u
+do_ecall_u: j default_exc_handler
+.weak do_ecall_s
+do_ecall_s: j default_exc_handler
+.weak do_ecall_m
+do_ecall_m: j default_exc_handler
+.weak do_insn_page_fault
+do_insn_page_fault: j default_exc_handler
+.weak do_load_page_fault
+do_load_page_fault: j default_exc_handler
+.weak do_store_page_fault
+do_store_page_fault: j default_exc_handler
+.global __INTERRUPTS
+__INTERRUPTS:
+.ifdef __hisi_chip_bs2x
+    .word DefaultHandler        # 0
+    .word DefaultHandler        # 1
+    .word DefaultHandler        # 2
+    .word DefaultHandler        # 3
+    .word DefaultHandler        # 4
+    .word DefaultHandler        # 5
+    .word DefaultHandler        # 6
+    .word DefaultHandler        # 7
+    .word DefaultHandler        # 8
+    .word DefaultHandler        # 9
+    .word DefaultHandler        # 10
+    .word DefaultHandler        # 11
+    .word DefaultHandler        # 12
+    .word DefaultHandler        # 13
+    .word DefaultHandler        # 14
+    .word DefaultHandler        # 15
+    .word DefaultHandler        # 16
+    .word DefaultHandler        # 17
+    .word DefaultHandler        # 18
+    .word DefaultHandler        # 19
+    .word DefaultHandler        # 20
+    .word DefaultHandler        # 21
+    .word DefaultHandler        # 22
+    .word DefaultHandler        # 23
+    .word DefaultHandler        # 24
+    .word DefaultHandler        # 25
+    .word BT_INT0               # 26
+    .word BT_INT1               # 27
+    .word GADC_DONE             # 28
+    .word GADC_ALARM            # 29
+    .word DefaultHandler        # 30 (gap)
+    .word DefaultHandler        # 31 (gap)
+    .word MCU_PCLR_LOCK         # 32
+    .word ULP_GPIO              # 33
+    .word GPIO_0                # 34
+    .word GPIO_1                # 35
+    .word BT_TOGGLE_POS         # 36
+    .word BT_TOGGLE_NEG         # 37
+    .word KEY_SCAN_LOW_POWER    # 38
+    .word UART_0                # 39
+    .word MCU_SIMO1P1_VSET      # 40
+    .word UART_1                # 41
+    .word UART_2                # 42
+    .word QSPI0_2CS             # 43
+    .word PDM                   # 44
+    .word DefaultHandler        # 45 (gap)
+    .word KEY_SCAN              # 46
+    .word M_WAKEUP              # 47
+    .word M_SLEEP               # 48
+    .word RTC_0                 # 49
+    .word RTC_1                 # 50
+    .word RTC_2                 # 51
+    .word RTC_3                 # 52
+    .word TIMER_0               # 53
+    .word TIMER_1               # 54
+    .word TIMER_2               # 55
+    .word TIMER_3               # 56
+    .word M_SDMA                # 57
+    .word DefaultHandler        # 58 (gap)
+    .word SPI_M_S_0             # 59
+    .word SPI_M_S_1             # 60
+    .word SPI_M                 # 61
+    .word I2C_0                 # 62
+    .word I2C_1                 # 63
+    .word BT_BB_BT              # 64
+    .word BT_BB_BLE             # 65
+    .word BT_BB_GLE             # 66
+    .word I2S                   # 67
+    .word RF_PRT                # 68
+    .word NFC                   # 69
+    .word SEC                   # 70
+    .word PWM_0                 # 71
+    .word PWM_1                 # 72
+    .word OSC_EN_WKUP           # 73
+    .word OSC_EN_SLEEP          # 74
+    .word DefaultHandler        # 75 (gap)
+    .word DefaultHandler        # 76 (gap)
+    .word DefaultHandler        # 77 (gap)
+    .word PMU_CMU_ERR           # 78
+    .word ULP_INT               # 79
+    .word DefaultHandler        # 80 (gap)
+    .word DefaultHandler        # 81 (gap)
+    .word DefaultHandler        # 82 (gap)
+    .word DefaultHandler        # 83 (gap)
+    .word DefaultHandler        # 84 (gap)
+    .word PMU2_CLK_32K_CALI     # 85
+    .word ULP_WKUP_INT          # 86
+    .word TSENSOR               # 87
+    .word QDEC                  # 88
+    .word USB                   # 89
+.else
+    .word DefaultHandler        # 0
+    .word DefaultHandler        # 1
+    .word DefaultHandler        # 2
+    .word DefaultHandler        # 3
+    .word DefaultHandler        # 4
+    .word DefaultHandler        # 5
+    .word DefaultHandler        # 6
+    .word DefaultHandler        # 7
+    .word DefaultHandler        # 8
+    .word DefaultHandler        # 9
+    .word DefaultHandler        # 10
+    .word DefaultHandler        # 11
+    .word DefaultHandler        # 12
+    .word DefaultHandler        # 13
+    .word DefaultHandler        # 14
+    .word DefaultHandler        # 15
+    .word DefaultHandler        # 16
+    .word DefaultHandler        # 17
+    .word DefaultHandler        # 18
+    .word DefaultHandler        # 19
+    .word DefaultHandler        # 20
+    .word DefaultHandler        # 21
+    .word DefaultHandler        # 22
+    .word DefaultHandler        # 23
+    .word DefaultHandler        # 24
+    .word DefaultHandler        # 25
+    .word TIMER_INT0            # 26
+    .word TIMER_INT1            # 27
+    .word TIMER_INT2            # 28
+    .word RTC_IRQ              # 29
+    .word DefaultHandler        # 30 (gap)
+    .word I2C0_INT             # 31
+    .word I2C1_INT             # 32
+    .word GPIO_INT0            # 33
+    .word GPIO_INT1            # 34
+    .word GPIO_INT2            # 35
+    .word DefaultHandler        # 36 (gap)
+    .word DefaultHandler        # 37 (gap)
+    .word DefaultHandler        # 38 (gap)
+    .word DefaultHandler        # 39 (gap)
+    .word COEX_WL_INT          # 40
+    .word COEX_BT_INT          # 41
+    .word COEX_WIFI_RESUME_INT # 42
+    .word SPI_INT             # 43
+    .word WLPHY_INT           # 44
+    .word WLMAC_INT           # 45
+    .word BLE_INT             # 46
+    .word SLE_INT             # 47
+    .word TSENSOR_INT         # 48
+    .word PMU_CMU_ERR_INT      # 49
+    .word DIAG_INT            # 50
+    .word I2S_INT            # 51
+    .word QSPI_INT           # 52
+    .word UART0_INT           # 53
+    .word UART1_INT           # 54
+    .word UART2_INT           # 55
+    .word PWM_ABNOR_INT        # 56
+    .word PWM_CFG_INT          # 57
+    .word SFC_INT            # 58
+    .word DMA_INT            # 59
+    .word TIMER_ABNOR_INT      # 60
+    .word I2S_TX_INT          # 61
+    .word I2S_RX_INT          # 62
+    .word PKE_REE_INT         # 63
+    .word SPACC_REE_INT        # 64
+    .word RKP_REE_INT         # 65
+    .word KLAD_REE_INT         # 66
+    .word DefaultHandler        # 67 (gap)
+    .word DefaultHandler        # 68 (gap)
+    .word MAC_MONITOR_INT      # 69
+    .word MEM_MONITOR_INT      # 70
+    .word TCM_MONITOR_INT      # 71
+    .word LSADC_INTR          # 72
+.endif
+__INTERRUPTS_end:
+.set __INTERRUPTS_len, (__INTERRUPTS_end - __INTERRUPTS) / 4
