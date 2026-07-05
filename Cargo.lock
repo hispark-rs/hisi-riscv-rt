@@ -6,7 +6,7 @@ version = 4
 name = "bs2x-pac"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f8e4405affc8d80d87cb4a535bd5eef8faafd18a32ee01302ca51f148760646b"
+checksum = "f8339c883e9bc5d252d2caf06c82af27f2a6fa2434a861513c9527bb0adc09ab"
 dependencies = [
  "critical-section",
  "riscv",
