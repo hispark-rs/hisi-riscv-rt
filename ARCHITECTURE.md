@@ -29,7 +29,7 @@
 `build.rs` 向下游二进制导出 `hisi-riscv-link.x`，按顺序 `INCLUDE memory.x`、
 `layout.ld`、`device.x`、`riscv-rt-symbols.x`，WS63 `boot-header` feature 额外
 `INCLUDE boot-header.x`。其中 `device.x` 来自当前 PAC 的 `rt` feature；旧的
-`ws63-link.x` 仍生成，但只是兼容别名。
+
 
 完整架构与评审集中维护在父仓 mdBook：
 

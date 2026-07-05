@@ -18,7 +18,7 @@
 //!   own `memory.x`.
 //!
 //! Downstream binaries should link with `-Thisi-riscv-link.x`. The old
-//! `-Tws63-link.x` name remains as a temporary compatibility alias.
+//! Downstream binaries should link with `-Thisi-riscv-link.x`.
 
 #![no_std]
 

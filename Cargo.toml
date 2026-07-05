@@ -30,8 +30,7 @@ critical-section = "1"
 # adapters. `bundled-memory-x` emits the active chip's default memory.x:
 # WS63 for `chip-ws63`, BS21/BS2X 160K L2RAM for `chip-bs21`. BS20 binaries and
 # custom boards should disable it and provide their own memory.x. Downstream bins
-# should link with `-Thisi-riscv-link.x`; `ws63-link.x` is a temporary
-# compatibility alias.
+# should link with `-Thisi-riscv-link.x`.
 default = ["bundled-memory-x"]
 bundled-memory-x = []
 chip-ws63 = ["dep:ws63-pac", "ws63-pac/rt"]
