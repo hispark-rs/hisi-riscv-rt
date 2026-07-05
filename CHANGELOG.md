@@ -5,12 +5,84 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+<!-- Unreleased entries are published as 0.5.0 below -->
+
+## [0.5.0]
 
 ### Changed
 
-- Release/CI now resolve PAC dependencies from crates.io under `--locked`; local
-  monorepo development continues to use the parent workspace's `[patch.crates-io]`
-  for local PAC checkouts.
+- **Runtime adapter architecture** (BREAKING): `hisi-riscv-rt` is split into a
+  CPU-generic core (`rt_core` — `riscv-rt` re-exports, entry/pre_init, critical-
+  section, linker contract) plus per-chip adapters. WS63 startup asm, cache/PMP,
+  local IRQ logic, boot header, and linker resources move into `chips/ws63` /
+  `asm/ws63` / `linker/ws63`. BS2X gets its own `chips/bs2x` adapter with default
+  `memory.x` and `layout.ld`. The crate-level `lib.rs` now only does re-export,
+  feature gating, and adapter module selection.
+- **`ws63-link.x` removed** (BREAKING): the deprecated compatibility alias from
+  0.4.0 is deleted. All consumers must use `-Thisi-riscv-link.x`. Examples,
+  HAL HIL, and docs are migrated. `custom_memory` example validates that
+  downstream `memory.x` + rt `layout/device/symbols` contract works without
+  the alias.
+- **WS63 interrupt symbols sourced from ws63-pac/rt**: `hisi-riscv-rt` no longer
+  carries its own copy of WS63 `device.x`. The PAC is the authority for interrupt
+  definitions.
+- **BS2X default memory.x**: `chip-bs21` now bundles a default `memory.x` and
+  `linker/bs2x/layout.ld` (matching the WS63 pattern). BS20/custom boards can
+  disable `bundled-memory-x`.
+- **stable/unstable gating**: `hisi-riscv-rt` adopts the same `stable`/`unstable`
+  mechanism as the HAL. BS2X adapter is `unstable`-gated. WS63 adapter is stable.
+- **Cargo feature restructuring**:
+  - `chip-ws63` / `chip-bs21` — chip adapter selection (`chip-ws63` includes
+    `ws63-pac/rt` for interrupt symbols; `chip-bs21` includes `bs2x-pac/rt`)
+  - `bundled-memory-x` — bundled linker resources (not chip-specific; works
+    with any adapter)
+  - `boot-header` — requires `chip-ws63` (build.rs `compile_error!` otherwise)
+  - `riscv-rt-start-experiment` — experimental: delegate .data/.bss/FPU init
+    to `riscv-rt::_start`, WS63 adapter only handles trap dispatch +
+    cache/PMP/boot-header (silicon-verified)
+  - `unstable` — exposes BS2X adapter and experimental items
+- **build.rs**: no longer unconditionally sets `target_chip="ws63"`. Feature-
+  driven adapter selection determines which linker resources are copied.
+  Generates `hisi-riscv-link.x` as the primary linker entry script.
+- **linker script naming**: `hisi-riscv-link.x` is the canonical name.
+  `linker/ws63/` contains WS63-specific fragments; `linker/bs2x/` contains
+  BS2X-specific fragments; `linker/common/` holds shared symbols/contract.
+- **CI/CD**: release/CI resolves PAC dependencies from crates.io under `--locked`;
+  local monorepo development continues via parent workspace `[patch.crates-io]`.
+
+### Added
+
+- `riscv-rt-start-experiment` feature: delegates `.data`/`.bss`/FPU init to
+  `riscv-rt::_start`. WS63 adapter's `startup_riscvrt.S` (compiled via cc,
+  not `global_asm!`, to avoid LTO symbol conflicts with riscv-rt's weak
+  `__pre_init`/`_setup_interrupts` defaults) handles trap dispatch,
+  `__INTERRUPTS` table, default handlers, and `__pre_init`/`_setup_interrupts`
+  overrides. `runtime_init_riscvrt()` handles ROM→DTCM, TCM→ITCM/DTCM, and
+  SRAM text→SRAM relocation after riscv-rt has done .data/.bss. A separate
+  `layout_riscvrt.ld` uses `ENTRY(_start)` and places riscv-rt's `.init` at
+  `ORIGIN(PROGRAM)`. **Silicon-verified on real WS63** (HIL `uart_hello`).
+- `exec_command!` macro: run shell commands at link time (e.g. `$CC` expansion).
+- Architecture documentation: `ARCHITECTURE.md` updated with adapter model;
+  mdBook `docs/src/explanation/components/runtime.md` describes the full layered
+  design (CPU-generic → HiSilicon-common → chip-specific → image-packaging).
+- `docs/src/reference/11-stable-api.md` — stable/unstable surface inventory for
+  the runtime crate.
+- HIL verification: `riscv-rt-start-experiment` path proven on real WS63 silicon.
+
+### Fixed
+
+- `.eh_frame` is discarded instead of being placed in PROGRAM (fixes link-time
+  section placement errors).
+- `boot-header` feature now errors at build time if `chip-ws63` is not selected.
+- Critical-section single-hart impl stays in rt crate; docs now clarify it applies
+  only to single-hart / no-A-extension product paths.
+- BS2X no longer references `ws63-link.x` in docs or examples.
+
+### Removed
+
+- `ws63-link.x` compatibility alias (announced deprecated in 0.4.0).
+- In-tree WS63 `device.x` copy — WS63 interrupt symbols now sourced from
+  `ws63-pac/rt`.
 
 ## [0.4.0]
 

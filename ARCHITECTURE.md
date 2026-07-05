@@ -1,15 +1,38 @@
 # hisi-riscv-rt 架构
 
-本仓库是 [ws63-rs](https://github.com/hispark-rs/ws63-rs) monorepo 的子模块。
+本仓库是 ws63-rs / hisi-riscv-rs monorepo 的 runtime 子模块。
 
-`hisi-riscv-rt` 是 WS63 的运行时：复位/trap 向量（`asm/startup.S`）、BSS/data 重定位、PMP 配置、
-链接脚本（`memory.x`/`layout.ld`/`device.x`），基于 `riscv-rt`。它也为整机注册单 hart 的
-critical-section 实现（`riscv/critical-section-single-hart`）。
+`hisi-riscv-rt` 的外部 Interface 是芯片中立的：`entry` / `pre_init` 来自
+`riscv-rt`，中断枚举来自当前 PAC，critical-section 实现由本 crate 统一注册。
+复位汇编、链接脚本、镜像头等芯片事实放在 startup adapter 后面；中断符号
+`device.x` 由当前 PAC 的 `rt` feature 负责。
 
-完整架构与评审（集中维护于主仓库）：
-- 组件文档：<https://github.com/hispark-rs/ws63-rs/blob/main/docs/architecture/hisi-riscv-rt.md>
-- 总体架构：<https://github.com/hispark-rs/ws63-rs/blob/main/docs/architecture/overview.md>
-- 整改排期：<https://github.com/hispark-rs/ws63-rs/blob/main/ROADMAP.md>
+## 当前 adapter
 
-> 已知问题：链接脚本目前不会传播到下游二进制（导致示例链接失败），中断向量配置与 mtvec 模式不一致。
-> 见 ROADMAP 阶段 1。
+- `chip-ws63`：使用 `asm/ws63/startup.S`、`linker/ws63/{memory.x,layout.ld}`，
+  `ws63-pac/rt` 提供 `device.x`，可选 `linker/ws63/boot-header.x`。
+- `chip-bs21` + `unstable`：BS2X 兼容路径。`linker/bs2x/{memory.x,layout.ld}`
+  提供 BS21/BS2X 默认内存图与布局，`bs2x-pac/rt` 提供 `device.x`，本 crate
+  暂时复用 legacy M-core startup。BS20/自定义板卡通过关闭 `bundled-memory-x`
+  提供自己的 `memory.x` 覆盖默认。
+- Hi3322：仅有预研文档，不暴露启动 feature。TES/TEE reset、CLIC、内存分区和镜像格式
+  都需要独立 adapter。
+
+## Stable / unstable
+
+稳定 surface 只包括薄 `riscv-rt` facade、WS63 默认启动/链接路径、WS63
+`boot-header`。BS2X adapter 和 `riscv-rt-start-experiment` 都要求 `unstable`：
+前者缺少 BS2X 板级 HIL，后者还未把默认 reset path 切到 `riscv-rt` `_start`。
+
+## Linker contract
+
+`build.rs` 向下游二进制导出 `hisi-riscv-link.x`，按顺序 `INCLUDE memory.x`、
+`layout.ld`、`device.x`、`riscv-rt-symbols.x`，WS63 `boot-header` feature 额外
+`INCLUDE boot-header.x`。其中 `device.x` 来自当前 PAC 的 `rt` feature；旧的
+
+
+完整架构与评审集中维护在父仓 mdBook：
+
+- `docs/src/explanation/components/05-hisi-riscv-rt.md`
+- `docs/src/explanation/components/hi3322-runtime-porting.md`
+- `docs/adr/0001-runtime-adapter-seams.md`
