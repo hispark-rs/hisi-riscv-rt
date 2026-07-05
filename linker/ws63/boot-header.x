@@ -44,20 +44,16 @@ SECTIONS
         KEEP(*(.boot_header.part2));     /* [0x184..0x300] */
     } > FLASH
 
-    /* When a SECTIONS block places an absolute-addressed allocated section like
-     * .boot_header, lld's orphan-placement heuristic can wedge orphans (e.g.
-     * .eh_frame, emitted by rustc for unwind tables) right after it — overlapping
-     * .startup at 0x230300. Explicitly place .eh_frame into the PROGRAM region (its
-     * normal home: in the feature-off build it lands just after .text) so it is no
-     * longer an orphan and lld leaves it where it belongs. This block is only ever
-     * linked in the boot-header build, so the default layout is unchanged. */
-    .eh_frame : ALIGN(4) {
-        KEEP(*(.eh_frame .eh_frame.*))
-    } > PROGRAM
+    /* Discard .eh_frame (rustc unwind tables). On bare-metal `#![no_std]` with a
+     * `#[panic_handler]` that just loops, unwind tables are dead weight — they are
+     * never used. Keeping them would place .eh_frame in the boot-header PT_LOAD
+     * segment, inflating code_area_len beyond the actual executable body and
+     * breaking hisi-fwpkg patch-hash validation. Discarding is safe here. */
+    /DISCARD/ : { *(.eh_frame .eh_frame.*) }
 
     /* Body-end marker: the end address of the last flash-resident (PROGRAM /
-     * REGION_TEXT / REGION_RODATA) content. `.eh_frame` above is the last such
-     * orphan; this empty NOLOAD-free marker section follows it in PROGRAM so
+     * REGION_TEXT / REGION_RODATA) content. With .eh_frame discarded, the last
+     * section in PROGRAM is .text (or .init.trap); this marker follows it so
      * `__hisi_body_end` == end-of-body VMA. `code_area_len`/`code_uncompress_len`
      * above are then `__hisi_body_end - 0x230300` = the real body length.
      * (Forward references in absolute-symbol expressions resolve in lld's final
