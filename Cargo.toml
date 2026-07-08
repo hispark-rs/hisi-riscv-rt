@@ -1,6 +1,6 @@
 [package]
 name = "hisi-riscv-rt"
-version = "0.5.0"
+version = "0.5.1"
 edition = "2024"
 description = "Runtime support for HiSilicon RISC-V chips — entry, startup adapters, interrupt vectors, linker scripts"
 license = "MIT"
