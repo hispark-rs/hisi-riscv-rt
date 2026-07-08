@@ -7,7 +7,7 @@
 #  riscv-rt's _start handles: GPR zeroing, GP/SP/FP init, .data copy,
 #  .bss zero, FPU init. This file provides:
 #
-#    __pre_init       — PMP disable, I/D-cache enable, stack canary
+#    __pre_init       — stack canary
 #    _setup_interrupts — call runtime_init_riscvrt (ROM/TCM/SRAM reloc,
 #                        MIE), set mtvec → trap_vector
 #    trap_vector + all IRQ/exception handlers + __INTERRUPTS table
@@ -17,14 +17,8 @@
 .section .text.riscvrt_pre_init, "ax"
 .global __pre_init
 __pre_init:
-    csrw  pmpcfg0, zero
-    csrw  pmpcfg1, zero
-    csrw  pmpcfg2, zero
-    csrw  pmpcfg3, zero
-
-    li    t0, 0b11
-    csrw  0x7C0, t0
-    csrw  0x7C1, t0
+    # PMP is intentionally left untouched on real WS63 silicon. The vendor
+    # startup only clears pmpcfg* in the CHIP_EDA simulation path.
 
     la    t0, __stack_start__
     la    t1, __stack_top__

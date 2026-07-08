@@ -2,7 +2,7 @@
 #  Assembly startup for HiSilicon WS63 (RISC-V RV32IMFC)
 #
 #  Startup sequence:
-#  1. Disable PMP (clear pmpcfg0-3) — EDA workaround
+#  1. Leave PMP untouched on real silicon (vendor PMP clearing is EDA-only)
 #  2. Set mtvec to trap_vector
 #  3. Clear mstatus (disable interrupts)
 #  4. Clear mie (disable all interrupt sources)
@@ -26,15 +26,9 @@ reset_vector:
     j HandleReset
 
 HandleReset:
-    # ---- PMP disable (for EDA/simulation environments) -----
-    li    t0, 0
-    csrw  pmpcfg0, t0
-    li    t0, 0
-    csrw  pmpcfg1, t0
-    li    t0, 0
-    csrw  pmpcfg2, t0
-    li    t0, 0
-    csrw  pmpcfg3, t0
+    # ---- PMP is intentionally left untouched on real WS63 silicon -----
+    # The vendor startup only clears pmpcfg* in the CHIP_EDA simulation path.
+    # On real app boot, writing pmpcfg0 here traps before mtvec is installed.
 
     # ---- Set trap vector base in DIRECT mode (mtvec[1:0] = 00) ----
     # The WS63 (Nuclei-derived) core does NOT take its custom local/MIE interrupts

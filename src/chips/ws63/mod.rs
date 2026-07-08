@@ -4,7 +4,7 @@
 //!   asm/ws63/startup.S → runtime_init() (Rust) → main()
 //!
 //! Experimental path (`chip-ws63` + `riscv-rt-start-experiment`):
-//!   riscv-rt _start → __pre_init (PMP/cache/canary) → .data/.bss/FPU →
+//!   riscv-rt _start → __pre_init (stack canary) → .data/.bss/FPU →
 //!   _setup_interrupts → runtime_init_riscvrt (ROM/TCM/SRAM reloc, MIE) →
 //!   mtvec set → j main
 

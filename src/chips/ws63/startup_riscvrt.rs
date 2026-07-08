@@ -1,7 +1,7 @@
 //! WS63 post-init for the riscv-rt-start-experiment path.
 //!
 //! riscv-rt's `_start` handles GP/SP/FP, .data/.bss, FPU.
-//! `__pre_init` (in startup_riscvrt.S) handles PMP/cache/canary.
+//! `__pre_init` (in startup_riscvrt.S) handles stack canary.
 //! `_setup_interrupts` (in startup_riscvrt.S) calls this function
 //! after .data/.bss/FPU are ready, then sets mtvec.
 

@@ -46,7 +46,7 @@ core::arch::global_asm!(concat!(
 // ---- Experimental path: riscv-rt _start + WS63 overrides ----
 // When riscv-rt-start-experiment is enabled, we defer to riscv-rt's _start
 // (which handles GPR zero, GP/SP, .data/.bss, FPU) and provide:
-//   - __pre_init: WS63 PMP, cache, stack canary
+//   - __pre_init: WS63 stack canary
 //   - _setup_interrupts: WS63 mtvec + MIE bits
 //   - trap_vector + all trap/IRQ handlers (WS63 direct-mode dispatch)
 // The ROM/TCM/SRAM multi-region relocation is still handled by runtime_init,

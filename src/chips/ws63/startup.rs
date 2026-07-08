@@ -2,26 +2,20 @@
 //!
 //! Called from assembly startup before jumping to `main()`.
 //! Handles:
-//! - Cache enable (I-cache 32KB, D-cache 4KB)
 //! - Data section copy from flash to SRAM/DTCM
 //! - BSS zeroing
 //! - ROM data relocation (DTCM)
 //! - ROM BSS clearing
 //! - TCM text/data copy
-//! - PMP region configuration
 //! - FPU initialization
-
-use core::arch::asm;
 
 /// Called by startup assembly after basic CPU initialization.
 ///
 /// # Safety
 /// Called only once at boot, before main().
 #[unsafe(no_mangle)]
+#[unsafe(link_section = ".text.runtime.init")]
 pub unsafe extern "C" fn runtime_init() -> ! {
-    // Configure caches
-    unsafe { cpu_cache_init() };
-
     // Relocate sections from flash to RAM
     unsafe { relocate_data() };
 
@@ -49,29 +43,11 @@ pub unsafe extern "C" fn runtime_init() -> ! {
     unsafe { main() };
 }
 
-/// Enable processor caches.
-///
-/// WS63 has:
-/// - 32KB I-cache (instruction cache)
-/// - 4KB D-cache (data cache)
-///
-/// Cache enable is done via custom CSR (0x7C0 for ICACHE, 0x7C1 for DCACHE).
-unsafe fn cpu_cache_init() {
-    // Enable I-cache via custom CSR
-    // CSR 0x7C0: I-cache control
-    // bit 0: enable, bit 1: invalidate
-    unsafe {
-        asm!(
-            "csrwi 0x7C0, 0b11", // Enable + invalidate I-cache
-            "csrwi 0x7C1, 0b11", // Enable + invalidate D-cache
-        );
-    }
-}
-
 /// Copy initialized data sections from flash to RAM.
 ///
 /// Copies ROM data to DTCM, TCM text/data to ITCM/DTCM,
 /// and SRAM text/data to SRAM.
+#[unsafe(link_section = ".text.runtime.init")]
 unsafe fn relocate_data() {
     unsafe extern "C" {
         // ROM data: flash → DTCM
@@ -122,7 +98,6 @@ unsafe fn relocate_data() {
                 count,
             );
         }
-
         // Zero ROM BSS in DTCM
         let bss_count = &raw const __rom_bss_end__ as usize - &raw const __rom_bss_begin__ as usize;
         if bss_count > 0 {
@@ -138,7 +113,6 @@ unsafe fn relocate_data() {
                 count,
             );
         }
-
         // Copy TCM data to DTCM
         let count = &raw const __tcm_data_end__ as usize - &raw const __tcm_data_begin__ as usize;
         if count > 0 {
@@ -148,7 +122,6 @@ unsafe fn relocate_data() {
                 count,
             );
         }
-
         // Zero TCM BSS in DTCM
         let bss_count = &raw const __tcm_bss_end__ as usize - &raw const __tcm_bss_begin__ as usize;
         if bss_count > 0 {
@@ -164,7 +137,6 @@ unsafe fn relocate_data() {
                 count,
             );
         }
-
         // Copy .data to SRAM
         let count = &raw const __data_end__ as usize - &raw const __data_begin__ as usize;
         if count > 0 {
@@ -178,6 +150,7 @@ unsafe fn relocate_data() {
 }
 
 /// Zero the BSS section in SRAM.
+#[unsafe(link_section = ".text.runtime.init")]
 unsafe fn zero_bss() {
     unsafe extern "C" {
         static mut __bss_begin__: u32;
