@@ -101,13 +101,22 @@ SECTIONS
      *  Contains: SRAM text, .data, .bss, stacks, heap
      * ================================================================ */
 
-    /* WiFi packet RAM reserve (48KB at start of SRAM) */
-    PROVIDE(__wifi_pkt_ram_start = ORIGIN(SRAM));
-    PROVIDE(__wifi_pkt_ram_size = 0xC000);    /* 48KB */
-    PROVIDE(__wifi_pkt_ram_end = __wifi_pkt_ram_start + __wifi_pkt_ram_size);
+    /* Wi-Fi packet RAM reserve (48KB at start of SRAM).
+       The vendor RF blobs reference the double-underscore begin/end symbols.
+       Model this as a real NOLOAD section instead of example-local --defsym
+       glue so the SRAM layout has one owner. */
+    .wifi_pkt_ram ORIGIN(SRAM) (NOLOAD) : ALIGN(8) {
+        __wifi_pkt_ram_begin__ = .;
+        . = . + 0xC000;
+        . = ALIGN(8);
+        __wifi_pkt_ram_end__ = .;
+    } > SRAM
+    PROVIDE(__wifi_pkt_ram_start = __wifi_pkt_ram_begin__);
+    PROVIDE(__wifi_pkt_ram_end = __wifi_pkt_ram_end__);
+    PROVIDE(__wifi_pkt_ram_size = SIZEOF(.wifi_pkt_ram));
 
     /* SRAM text (code copied from flash to SRAM for faster execution) */
-    .text_sram __wifi_pkt_ram_end : ALIGN(8) {
+    .text_sram __wifi_pkt_ram_end__ : ALIGN(8) {
         __sram_text_load__ = LOADADDR(.text_sram);
         __sram_text_begin__ = .;
         *(.text.sram .text.sram.*)
