@@ -9,32 +9,35 @@ on:
 env:
   CARGO_TERM_COLOR: always
   TARGET: riscv32imfc-unknown-none-elf
+  TOOLCHAIN: nightly-2026-07-09
 
 jobs:
   # hisi-riscv-rt is riscv-only: it `global_asm!`s the riscv startup and pulls the
   # riscv crate. Standalone CI deliberately resolves PAC dependencies from
   # crates.io; local monorepo development uses the parent workspace's
-  # [patch.crates-io] instead. The only special setup here is the custom
-  # hisi-riscv toolchain, whose riscv32imfc target is builtin (`rustup target add`
-  # cannot fetch it — it is not a distributed std target).
+  # [patch.crates-io] instead. The target is now an upstream rustc builtin in the
+  # pinned nightly, but rustup does not ship a prebuilt rust-std component for it
+  # yet, so RISC-V commands pass `-Zbuild-std=core,alloc`.
   check:
     name: Check + Clippy + Docs (riscv32imfc)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install hisi-riscv toolchain
+      - name: Install Rust toolchain
         run: |
-          curl -fsSL --retry 3 -o tc.tar.gz \
-            https://github.com/hispark-rs/hisi-riscv-rust-toolchain/releases/download/v1.96.0-2/hisi-riscv-rust-1.96.0-x86_64-unknown-linux-gnu.tar.gz
-          mkdir -p "$RUNNER_TEMP/hisi-riscv" && tar -C "$RUNNER_TEMP/hisi-riscv" -xzf tc.tar.gz
-          rustup toolchain link hisi-riscv "$RUNNER_TEMP/hisi-riscv/stage2"
-          rustc +hisi-riscv --version
+          rustup toolchain install "$TOOLCHAIN" \
+            --profile minimal \
+            --component rust-src \
+            --component clippy \
+            --component rustfmt
+          rustc +"$TOOLCHAIN" --version
+          rustc +"$TOOLCHAIN" --print target-list | grep -qx "$TARGET"
       - name: Check
-        run: cargo +hisi-riscv check --locked --target "$TARGET"
+        run: cargo +"$TOOLCHAIN" check -Zbuild-std=core,alloc --locked --target "$TARGET"
       - name: Clippy
-        run: cargo +hisi-riscv clippy --locked --target "$TARGET" -- -D warnings
+        run: cargo +"$TOOLCHAIN" clippy -Zbuild-std=core,alloc --locked --target "$TARGET" -- -D warnings
       - name: Docs
-        run: cargo +hisi-riscv doc --locked --no-deps --document-private-items --target "$TARGET"
+        run: cargo +"$TOOLCHAIN" doc -Zbuild-std=core,alloc --locked --no-deps --document-private-items --target "$TARGET"
         env:
           RUSTDOCFLAGS: -D warnings
 
