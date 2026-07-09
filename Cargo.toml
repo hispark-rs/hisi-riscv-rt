@@ -49,5 +49,9 @@ boot-header = []
 # It is intentionally non-default and additionally requires `unstable` until
 # QEMU + HIL prove the path.
 riscv-rt-start-experiment = []
+# Diagnostic only: emit short UART0 markers during the WS63 startup path.
+# This uses the flashboot-configured UART0 console and is intentionally
+# non-default so normal firmware output remains unchanged.
+startup-uart-trace = []
 
 [build-dependencies]

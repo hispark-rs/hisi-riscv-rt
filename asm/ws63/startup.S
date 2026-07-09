@@ -19,10 +19,39 @@
 .global reset_vector
 .option rvc
 
+.ifndef __hisi_startup_uart_trace
+.set __hisi_startup_uart_trace, 0
+.endif
+
+.macro startup_uart_putc ch
+.if __hisi_startup_uart_trace
+1:
+    li    t5, 0x44010044
+    lhu   t6, 0(t5)
+    andi  t6, t6, 1
+    bnez  t6, 1b
+    li    t5, 0x44010004
+    li    t6, \ch
+    sh    t6, 0(t5)
+.endif
+.endm
+
+.macro startup_uart_mark a, b, c, d
+.if __hisi_startup_uart_trace
+    startup_uart_putc \a
+    startup_uart_putc \b
+    startup_uart_putc \c
+    startup_uart_putc \d
+    startup_uart_putc 13
+    startup_uart_putc 10
+.endif
+.endm
+
 # ----------------------------------------------------------------------
 #  Reset entry point — linked as the very first thing in program memory
 # ----------------------------------------------------------------------
 reset_vector:
+    startup_uart_mark 82, 84, 48, 33
     j HandleReset
 
 HandleReset:
@@ -69,6 +98,7 @@ stack_fill_loop:
     addi  t0, t0, 4
     blt   t0, t1, stack_fill_loop
 end_stack_fill:
+    startup_uart_mark 82, 84, 49, 33
 
     # ---- Jump to Rust runtime init ----
     tail  runtime_init
@@ -636,35 +666,8 @@ local_interrupt_handler:
 # ======================================================================
 .section .text.default_handlers, "ax"
 
-/* ── riscv-rt v0.14 required linker symbols ───────────────── */
-/* riscv-rt's assembly.rs references these as extern.         */
-/* We define them here as globals with sensible defaults.      */
-.global _max_hart_id
-_max_hart_id: .4byte 0
-
-.global _hart_stack_size
-_hart_stack_size: .4byte 0x2000
-
-.global _stack_start
-_stack_start: .4byte 0xA90000
-
-.global __sidata
-__sidata: .4byte 0
-
-.global __sdata
-__sdata: .4byte 0xA00000
-
-.global __edata
-__edata: .4byte 0xA00000
-
-.global __sbss
-__sbss: .4byte 0xA00000
-
-.global __ebss
-__ebss: .4byte 0xA00000
-
-/* ── riscv-rt v0.14 expected exception handler symbols ───── */
-/* These are extern-weak in riscv-rt's exceptions.rs.        */
+    /* ── riscv-rt v0.14 expected exception handler symbols ───── */
+    /* These are extern-weak in riscv-rt's exceptions.rs.        */
 /* We provide default infinite-loop handlers.               */
 .weak SupervisorSoft
 SupervisorSoft: j .

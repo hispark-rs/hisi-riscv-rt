@@ -37,7 +37,22 @@ compile_error!("hisi-riscv-rt `riscv-rt-start-experiment` is currently WS63-only
 compile_error!("hisi-riscv-rt `riscv-rt-start-experiment` is experimental; enable `unstable` with it");
 
 // ---- Default startup path: custom asm/ws63/startup.S ----
-#[cfg(all(feature = "chip-ws63", not(feature = "riscv-rt-start-experiment")))]
+#[cfg(all(
+    feature = "chip-ws63",
+    feature = "startup-uart-trace",
+    not(feature = "riscv-rt-start-experiment")
+))]
+core::arch::global_asm!(concat!(
+    ".set __hisi_chip_ws63, 1\n",
+    ".set __hisi_startup_uart_trace, 1\n",
+    include_str!("../asm/ws63/startup.S")
+));
+
+#[cfg(all(
+    feature = "chip-ws63",
+    not(feature = "startup-uart-trace"),
+    not(feature = "riscv-rt-start-experiment")
+))]
 core::arch::global_asm!(concat!(
     ".set __hisi_chip_ws63, 1\n",
     include_str!("../asm/ws63/startup.S")

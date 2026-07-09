@@ -34,12 +34,13 @@ SECTIONS
      * ================================================================ */
 
     /* Patch table (ROM function patch redirection) */
-    .patch ORIGIN(ITCM) (NOLOAD) : ALIGN(8) {
+    .patch ORIGIN(ITCM) (NOLOAD) : AT(ORIGIN(ITCM)) {
+        . = ALIGN(8);
         __rom_patch_load__ = LOADADDR(.patch);
         __rom_patch_begin__ = .;
         KEEP(*(.patch_remap))
         KEEP(*(.patch_cmp))
-    } > ITCM AT > PROGRAM
+    } > ITCM
 
     /* ROM RAM callback veneers (ROM→RAM jump trampolines) */
     .rom_ram_cb_text : ALIGN(8) {
@@ -70,7 +71,8 @@ SECTIONS
         . = ALIGN(4);
     } > DTCM AT > PROGRAM
 
-    .rom_bss (NOLOAD) : ALIGN(8) {
+    .rom_bss (NOLOAD) : AT(.) {
+        . = ALIGN(8);
         __rom_bss_begin__ = .;
         *(.rom_bss .rom_bss.*)
         . = ALIGN(4);
@@ -85,7 +87,8 @@ SECTIONS
         . = ALIGN(4);
     } > DTCM AT > PROGRAM
 
-    .bss_tcm (NOLOAD) : ALIGN(8) {
+    .bss_tcm (NOLOAD) : AT(.) {
+        . = ALIGN(8);
         __tcm_bss_begin__ = .;
         *(.bss.tcm .bss.tcm.*)
         . = ALIGN(4);
@@ -105,7 +108,8 @@ SECTIONS
        The vendor RF blobs reference the double-underscore begin/end symbols.
        Model this as a real NOLOAD section instead of example-local --defsym
        glue so the SRAM layout has one owner. */
-    .wifi_pkt_ram ORIGIN(SRAM) (NOLOAD) : ALIGN(8) {
+    .wifi_pkt_ram ORIGIN(SRAM) (NOLOAD) : AT(ORIGIN(SRAM)) {
+        . = ALIGN(8);
         __wifi_pkt_ram_begin__ = .;
         . = . + 0xC000;
         . = ALIGN(8);
@@ -130,10 +134,14 @@ SECTIONS
      *  Contains: .text, .rodata, initialization data LMA
      * ================================================================ */
 
-    /* Program entry section (must be first in PROGRAM) */
+    /* Program entry section (must be first in PROGRAM).
+       FlashBoot enters the app at the PROGRAM base (0x230300), so the default
+       WS63 path must place our reset_vector before riscv-rt's .init/_start. */
     .startup ORIGIN(PROGRAM) : ALIGN(8) {
         KEEP(*(.text.entry))
         KEEP(*(.text.runtime.init))
+        KEEP(*(.init))
+        KEEP(*(.init.trap))
         . = ALIGN(4);
     } > PROGRAM
 
@@ -159,6 +167,8 @@ SECTIONS
         *(.text .text.*)
         *(.rodata .rodata.*)
         *(.srodata .srodata.*)
+        *(.wifi.tcm.text .wifi.tcm.text.*)
+        *(.wifi.tcm.rodata .wifi.tcm.rodata.*)
         . = ALIGN(8);
         __init_array_start = .;
         KEEP(*(.init_array .init_array.*))
@@ -181,9 +191,11 @@ SECTIONS
         __sidata = __data_load__;
         __sdata = .;
         *(.data .data.*)
+        *(.wifi.tcm.data .wifi.tcm.data.*)
         *(.got .got.*)
         *(.igot .igot.*)
         _gp_ = . + 0x800;
+        PROVIDE(__global_pointer$ = _gp_);
         *(.sdata .sdata.*)
         . = ALIGN(4);
         __data_end__ = .;
@@ -191,11 +203,13 @@ SECTIONS
     } > SRAM AT > PROGRAM
 
     /* BSS (zeroed at startup) */
-    .bss (NOLOAD) : ALIGN(8) {
+    .bss (NOLOAD) : AT(.) {
+        . = ALIGN(8);
         __bss_begin__ = .;
         __sbss = .;
         *(.bss .bss.*)
         *(.sbss .sbss.*)
+        *(.wifi.tcm.bss .wifi.tcm.bss.*)
         *(COMMON)
         . = ALIGN(4);
         __bss_end__ = .;
@@ -207,12 +221,14 @@ SECTIONS
      * ================================================================ */
 
     /* Preserved memory for boot state sharing */
-    .preserve ORIGIN(PRESERVE) (NOLOAD) : ALIGN(8) {
+    .preserve ORIGIN(PRESERVE) (NOLOAD) : AT(ORIGIN(PRESERVE)) {
+        . = ALIGN(8);
         KEEP(*(.preserve))
     } > PRESERVE
 
     /* Stacks grow downward from the preserved region */
-    .stacks (NOLOAD) : ALIGN(16) {
+    .stacks (NOLOAD) : AT(.) {
+        . = ALIGN(16);
         __stack_start__ = .;
         . = . + __stack_size;          /* User/main stack */
         . = ALIGN(16);
@@ -246,7 +262,8 @@ SECTIONS
     } > SRAM
 
     /* Heap uses remaining SRAM */
-    .heap (NOLOAD) : ALIGN(8) {
+    .heap (NOLOAD) : AT(.) {
+        . = ALIGN(8);
         __heap_start__ = .;
         PROVIDE(g_intheap_begin = .);
         PROVIDE(g_intheap_size = ORIGIN(SRAM) + LENGTH(SRAM) - g_intheap_begin);

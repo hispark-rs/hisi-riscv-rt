@@ -16,11 +16,15 @@
 #[unsafe(no_mangle)]
 #[unsafe(link_section = ".text.runtime.init")]
 pub unsafe extern "C" fn runtime_init() -> ! {
+    startup_trace(b"RT2!\r\n");
+
     // Relocate sections from flash to RAM
     unsafe { relocate_data() };
 
     // Zero BSS
     unsafe { zero_bss() };
+
+    startup_trace(b"RT3!\r\n");
 
     // Re-enable machine interrupts (disabled by startup.S for init)
     // MIE bits 26-31: TIMER0, TIMER1, TIMER2, RTC, I2C0, I2C1
@@ -40,8 +44,28 @@ pub unsafe extern "C" fn runtime_init() -> ! {
     unsafe extern "Rust" {
         fn main() -> !;
     }
+    startup_trace(b"RT4!\r\n");
     unsafe { main() };
 }
+
+#[cfg(feature = "startup-uart-trace")]
+#[inline(always)]
+fn startup_trace(msg: &[u8]) {
+    const DATA: *mut u16 = 0x4401_0004 as *mut u16;
+    const ST: *const u16 = 0x4401_0044 as *const u16;
+    for &b in msg {
+        unsafe {
+            while core::ptr::read_volatile(ST) & 0x01 != 0 {
+                core::hint::spin_loop();
+            }
+            core::ptr::write_volatile(DATA, b as u16);
+        }
+    }
+}
+
+#[cfg(not(feature = "startup-uart-trace"))]
+#[inline(always)]
+fn startup_trace(_msg: &[u8]) {}
 
 /// Copy initialized data sections from flash to RAM.
 ///
