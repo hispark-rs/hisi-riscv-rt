@@ -17,6 +17,7 @@ pub unsafe extern "C" fn runtime_init_riscvrt() {
         super::cache::__hisi_ws63_cache_init();
         relocate_data();
         zero_extra_bss();
+        super::rom_patch::__hisi_ws63_rom_patch_enable();
         core::arch::asm!(
             "li t0, 0x888",
             "csrs mie, t0",
@@ -34,6 +35,9 @@ unsafe fn relocate_data() {
         static mut __wifi_rom_data_begin__: u32;
         static mut __wifi_rom_data_end__: u32;
         static mut __wifi_rom_data_load__: u32;
+        static mut __rom_patch_begin__: u32;
+        static mut __rom_patch_end__: u32;
+        static mut __rom_patch_load__: u32;
         static mut __tcm_text_begin__: u32;
         static mut __tcm_text_end__: u32;
         static mut __tcm_text_load__: u32;
@@ -55,6 +59,7 @@ unsafe fn relocate_data() {
             };
         }
 
+        copy_region!(__rom_patch_load__, __rom_patch_begin__, __rom_patch_end__);
         copy_region!(__rom_data_load__, __rom_data_begin__, __rom_data_end__);
         copy_region!(__wifi_rom_data_load__, __wifi_rom_data_begin__, __wifi_rom_data_end__);
         copy_region!(__tcm_text_load__, __tcm_text_begin__, __tcm_text_end__);

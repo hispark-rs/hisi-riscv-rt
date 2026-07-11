@@ -33,23 +33,6 @@ SECTIONS
      *  Contains: patch tables, ROM veneer callbacks, TCM text
      * ================================================================ */
 
-    /* The mask-ROM ABI reserves 194 long-jump entries (0x610 bytes) and
-       197 compare words (0x314 bytes), rounded up to an 8-byte boundary.
-       Even when patch redirection is disabled, the following ROM callback
-       veneer table must start at the same fixed address as the vendor image. */
-    .patch ORIGIN(ITCM) (NOLOAD) : AT(ORIGIN(ITCM)) {
-        . = ALIGN(8);
-        __rom_patch_load__ = LOADADDR(.patch);
-        __rom_patch_begin__ = .;
-        KEEP(*(.patch_remap))
-        KEEP(*(.patch_cmp))
-        . = ORIGIN(ITCM) + 0x928;
-        __rom_patch_end__ = .;
-    } > ITCM
-
-    ASSERT(__rom_patch_end__ == ORIGIN(ITCM) + 0x928,
-           "WS63 ROM patch ABI prefix has the wrong size")
-
     /* ================================================================
      *  DTCM sections (Data TCM)
      *  Address: 0x180000
@@ -68,23 +51,6 @@ SECTIONS
 
     ASSERT(__rom_bss_begin__ == 0x1803e0 && __rom_bss_end__ == 0x182888,
            "WS63 mask-ROM BSS ABI range drifted")
-
-    /* TCM data (copied from flash to DTCM by runtime_init) */
-    .data_tcm : ALIGN(8) {
-        __tcm_data_load__ = LOADADDR(.data_tcm);
-        __tcm_data_begin__ = .;
-        *(.data.tcm .data.tcm.*)
-        . = ALIGN(4);
-    } > DTCM AT > PROGRAM
-
-    .bss_tcm (NOLOAD) : AT(.) {
-        . = ALIGN(8);
-        __tcm_bss_begin__ = .;
-        *(.bss.tcm .bss.tcm.*)
-        . = ALIGN(4);
-        __tcm_data_end__ = .;
-        __tcm_bss_end__ = .;
-    } > DTCM
 
     /* ================================================================
      *  SRAM sections (Main system RAM at 0xA00000)
@@ -105,16 +71,6 @@ SECTIONS
     PROVIDE(__wifi_pkt_ram_start = __wifi_pkt_ram_begin__);
     PROVIDE(__wifi_pkt_ram_end = __wifi_pkt_ram_end__);
     PROVIDE(__wifi_pkt_ram_size = SIZEOF(.wifi_pkt_ram));
-
-    /* SRAM text (code copied from flash to SRAM for faster execution) */
-    .text_sram __wifi_pkt_ram_end__ : ALIGN(8) {
-        __sram_text_load__ = LOADADDR(.text_sram);
-        __sram_text_begin__ = .;
-        *(.text.sram .text.sram.*)
-        KEEP(*(.patch.text.on.sram .patch.rodata.on.sram))
-        . = ALIGN(4);
-        __sram_text_end__ = .;
-    } > SRAM AT > PROGRAM
 
     /* ================================================================
      *  FLASH sections (PROGRAM region at 0x230300)
@@ -154,6 +110,7 @@ SECTIONS
         *(.text .text.*)
         *(.rodata .rodata.*)
         *(.srodata .srodata.*)
+        KEEP(*(.patch.text.on.flash .patch.rodata.on.flash))
         *(.wifi.tcm.text .wifi.tcm.text.*)
         *(.wifi.tcm.rodata .wifi.tcm.rodata.*)
         . = ALIGN(8);
@@ -165,6 +122,51 @@ SECTIONS
         __fini_array_end = .;
         . = ALIGN(8);
     } > PROGRAM
+
+    /* Loadable mask-ROM patch table, generated against this final ELF. */
+    .patch ORIGIN(ITCM) : ALIGN(8) {
+        FILL(0x00)
+        __rom_patch_load__ = LOADADDR(.patch);
+        __rom_patch_begin__ = .;
+        KEEP(*(.patch_remap))
+        . = ORIGIN(ITCM) + 0x610;
+        __rom_patch_cmp_begin__ = .;
+        KEEP(*(.patch_cmp))
+        . = ORIGIN(ITCM) + 0x928;
+        __rom_patch_end__ = .;
+    } > ITCM AT > PROGRAM
+
+    ASSERT(__rom_patch_begin__ == 0x14c000 &&
+           __rom_patch_cmp_begin__ == 0x14c610 &&
+           __rom_patch_end__ == 0x14c928,
+           "WS63 ROM patch ABI prefix has the wrong layout")
+
+    .data_tcm : ALIGN(8) {
+        __tcm_data_load__ = LOADADDR(.data_tcm);
+        __tcm_data_begin__ = .;
+        *(.data.tcm .data.tcm.*)
+        KEEP(*(.patch.data.on.itcm))
+        . = ALIGN(4);
+    } > DTCM AT > PROGRAM
+
+    .bss_tcm (NOLOAD) : AT(.) {
+        . = ALIGN(8);
+        __tcm_bss_begin__ = .;
+        *(.bss.tcm .bss.tcm.*)
+        KEEP(*(.patch.bss.on.itcm))
+        . = ALIGN(4);
+        __tcm_data_end__ = .;
+        __tcm_bss_end__ = .;
+    } > DTCM
+
+    .text_sram __wifi_pkt_ram_end__ : ALIGN(8) {
+        __sram_text_load__ = LOADADDR(.text_sram);
+        __sram_text_begin__ = .;
+        *(.text.sram .text.sram.*)
+        KEEP(*(.patch.text.on.sram .patch.rodata.on.sram))
+        . = ALIGN(4);
+        __sram_text_end__ = .;
+    } > SRAM AT > PROGRAM
 
     /* ROM data runs from its fixed DTCM ABI but is loaded after flash text. */
     .rom_data ORIGIN(DTCM) : ALIGN(8) {
@@ -204,6 +206,7 @@ SECTIONS
     .text_tcm : ALIGN(8) {
         *(.text.tcm .text.tcm.*)
         *(.rodata.tcm .rodata.tcm.*)
+        KEEP(*(.patch.text.on.itcm .patch.rodata.on.itcm))
         . = ALIGN(4);
         __tcm_text_end__ = .;
     } > ITCM AT > PROGRAM
@@ -252,6 +255,7 @@ SECTIONS
         __sidata = __data_load__;
         __sdata = .;
         *(.data .data.*)
+        KEEP(*(.patch.data.on.sram))
         *(.wifi.tcm.data .wifi.tcm.data.*)
         *(.got .got.*)
         *(.igot .igot.*)
@@ -269,6 +273,7 @@ SECTIONS
         __bss_begin__ = .;
         __sbss = .;
         *(.bss .bss.*)
+        KEEP(*(.patch.bss.on.sram))
         *(.sbss .sbss.*)
         *(.wifi.tcm.bss .wifi.tcm.bss.*)
         *(COMMON)

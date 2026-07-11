@@ -9,6 +9,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Added
 - Add the ABI-fixed WS63 `.wifi_rom_data` DTCM window and relocate it
   independently at startup, preserving the preceding platform ROM data.
+- Add PAC-backed WS63 mask-ROM instruction patch setup. A post-link generated
+  `.patch` table is copied from flash to ITCM and enabled before `main`; an
+  empty table leaves the controller untouched.
+- Add the opt-in `ws63-bgle-32k` startup memory profile used by the vendor
+  WS63 Wi-Fi/BLE application image, instead of hard-coding one RAM9 owner for
+  every firmware.
 
 ### Fixed
 

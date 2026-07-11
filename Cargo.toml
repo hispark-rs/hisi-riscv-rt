@@ -53,5 +53,10 @@ riscv-rt-start-experiment = []
 # This uses the flashboot-configured UART0 console and is intentionally
 # non-default so normal firmware output remains unchanged.
 startup-uart-trace = []
+# Select the vendor WS63 application memory profile with 32 KiB BGLE exchange
+# memory (RAM9), 16 KiB ITCM (RAM11), and 16 KiB DTCM (RAM10). Wi-Fi/BLE combo
+# images built from the ws63-liteos-app blob set need this; non-radio firmware
+# keeps the no-BGLE profile when the feature is absent.
+ws63-bgle-32k = []
 
 [build-dependencies]

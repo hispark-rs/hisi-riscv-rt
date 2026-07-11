@@ -32,6 +32,10 @@ pub unsafe extern "C" fn runtime_init() -> ! {
     // Zero BSS
     unsafe { zero_bss() };
 
+    // The post-link generated table is now resident in ITCM. Enable the
+    // controller only when the table contains at least one ROM redirection.
+    unsafe { super::rom_patch::__hisi_ws63_rom_patch_enable() };
+
     startup_mark4(b'R', b'T', b'3', b'!');
 
     // Re-enable machine interrupts (disabled by startup.S for init)
@@ -144,6 +148,11 @@ unsafe fn relocate_data() {
         static mut __wifi_rom_data_end__: u32;
         static mut __wifi_rom_data_load__: u32;
 
+        // Mask-ROM instruction patch table: flash → ITCM
+        static mut __rom_patch_begin__: u32;
+        static mut __rom_patch_end__: u32;
+        static mut __rom_patch_load__: u32;
+
         // ROM BSS: zero in DTCM
         static mut __rom_bss_begin__: u32;
         static mut __rom_bss_end__: u32;
@@ -179,6 +188,16 @@ unsafe fn relocate_data() {
 
     unsafe {
         startup_mark4(b'R', b'D', b'0', b'!');
+        let begin = &raw const __rom_patch_begin__ as usize;
+        let end = &raw const __rom_patch_end__ as usize;
+        let count = range_len(begin, end);
+        if count > 0 {
+            core::ptr::copy_nonoverlapping(
+                &raw const __rom_patch_load__ as *const u8,
+                &raw mut __rom_patch_begin__ as *mut u8,
+                count,
+            );
+        }
         // Copy ROM data to DTCM
         let begin = &raw const __rom_data_begin__ as usize;
         let end = &raw const __rom_data_end__ as usize;

@@ -4,8 +4,9 @@ use core::arch::asm;
 
 /// Select the vendor default Wi-Fi memory shape before touching ITCM/DTCM.
 ///
-/// RAM5-RAM9/RAM12 remain packet RAM, RAM10 becomes DTCM, and RAM11 becomes
-/// ITCM. This mirrors `fbb_ws63`'s `dyn_mem_cfg()` default branch.
+/// RAM5-RAM8/RAM12 remain packet RAM, RAM10 becomes DTCM, and RAM11 becomes
+/// ITCM. RAM9 is packet RAM by default; `ws63-bgle-32k` assigns it to BGLE,
+/// matching the vendor `ws63-liteos-app` build used by the RF closure.
 ///
 /// # Safety
 ///
@@ -14,6 +15,11 @@ use core::arch::asm;
 #[unsafe(no_mangle)]
 #[unsafe(link_section = ".text.runtime.init")]
 pub(super) unsafe extern "C" fn __hisi_ws63_shared_ram_init() {
+    #[cfg(feature = "ws63-bgle-32k")]
+    const RAM9_SELECTION: u8 = 1;
+    #[cfg(not(feature = "ws63-bgle-32k"))]
+    const RAM9_SELECTION: u8 = 0;
+
     let share = unsafe { &*ws63_pac::ShareMemCtl::ptr() };
     let bt_em = unsafe { &*ws63_pac::BtEmCtl::ptr() };
 
@@ -34,7 +40,7 @@ pub(super) unsafe extern "C" fn __hisi_ws63_shared_ram_init() {
                 .ram10_sel()
                 .bits(3)
                 .ram9_sel()
-                .bits(0)
+                .bits(RAM9_SELECTION)
                 .ram8_sel()
                 .bits(0)
                 .ram7_sel()

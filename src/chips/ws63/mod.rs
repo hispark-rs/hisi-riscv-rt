@@ -10,6 +10,7 @@
 
 mod cache;
 mod memory;
+mod rom_patch;
 
 #[cfg(not(feature = "riscv-rt-start-experiment"))]
 mod startup;
