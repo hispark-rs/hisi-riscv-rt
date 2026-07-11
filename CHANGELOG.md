@@ -12,6 +12,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- Place the vendor WS63 platform ROM-data initializer at its fixed DTCM ABI
+  addresses and load it after flash text, so mask-ROM function tables and
+  systick/TCXO defaults are preserved without colliding with `.startup`.
 - Reserve the official WS63 8 KiB radar RX and 256-byte preserved regions
   outside the application heap, and export the default NV partition contract.
 
