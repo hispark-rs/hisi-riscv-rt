@@ -7,7 +7,9 @@
  *   ITCM:     0x14C000 - 0x150000  (16K default)
  *   DTCM:     0x180000 - 0x184000  (16K default)
  *   PROGRAM:  0x230300 - 0x470300  (~2.25MiB app code in flash)
- *   SRAM:     0xA00000 - 0xA90000  (576K main system RAM)
+ *   SRAM:     0xA00000 - 0xA8DF00  (main system RAM)
+ *   PRESERVE: 0xA8DF00 - 0xA8E000  (256-byte boot state)
+ *   RADAR:    0xA8E000 - 0xA90000  (8K radar RX reserve)
  *   FLASH:    0x200000 - 0xA00000  (8MB SPI NOR flash)
  *
  * TCM and SRAM sizes are configurable via CONFIG flags (see fbb_ws63 reference).
@@ -33,11 +35,14 @@ MEMORY
     /* Program region in flash (application code, starts after boot header) */
     PROGRAM  (rx) : ORIGIN = 0x230300, LENGTH = 0x240000
 
-    /* Main system RAM (SRAM/L2RAM, 576K default) */
-    SRAM     (rwx): ORIGIN = 0xA00000, LENGTH = 0x90000
+    /* Default 576K share-RAM window minus the vendor-owned preserved and
+       radar RX regions at its top. Keep these boundaries aligned with
+       fbb_ws63 memory_config_common.h. */
+    SRAM     (rwx): ORIGIN = 0xA00000, LENGTH = 0x8DF00
 
-    /* Preserved region (256 bytes at end of SRAM for boot state) */
-    PRESERVE (rw) : ORIGIN = 0xA90000 - 0x100, LENGTH = 0x100
+    /* Preserved boot state followed by the default 8K radar RX reserve. */
+    PRESERVE (rw) : ORIGIN = 0xA8DF00, LENGTH = 0x100
+    RADAR    (rw) : ORIGIN = 0xA8E000, LENGTH = 0x2000
 }
 
 /* Memory regions exported as symbols for runtime relocation */
@@ -49,10 +54,19 @@ PROVIDE(__dtcm_start = ORIGIN(DTCM));
 PROVIDE(__dtcm_length = LENGTH(DTCM));
 PROVIDE(__sram_start = ORIGIN(SRAM));
 PROVIDE(__sram_length = LENGTH(SRAM));
+PROVIDE(__preserve_start = ORIGIN(PRESERVE));
+PROVIDE(__preserve_length = LENGTH(PRESERVE));
+PROVIDE(__radar_start = ORIGIN(RADAR));
+PROVIDE(__radar_length = LENGTH(RADAR));
 PROVIDE(__flash_start = ORIGIN(FLASH));
 PROVIDE(__flash_length = LENGTH(FLASH));
 PROVIDE(__program_start = ORIGIN(PROGRAM));
 PROVIDE(__program_length = LENGTH(PROGRAM));
+
+/* Default WS63 partition-map contract used by the RF read-only NV adapter.
+   The address and 16K burn range match the official ws63_all_nv partition. */
+PROVIDE(__nv_storage_start = 0x5FC000);
+PROVIDE(__nv_storage_length = 0x4000);
 
 /* Stack sizes (can be overridden by user) */
 __stack_size = DEFINED(__stack_size) ? __stack_size : 0x2000;     /* 8KB user stack */

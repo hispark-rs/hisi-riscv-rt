@@ -20,6 +20,10 @@ __pre_init:
     # PMP is intentionally left untouched on real WS63 silicon. The vendor
     # startup only clears pmpcfg* in the CHIP_EDA simulation path.
 
+    # Match the vendor runtime before riscv-rt relocates .data/.bss. This is a
+    # self-contained Rust function backed only by inline CSR writes.
+    call  __hisi_ws63_cache_init
+
     la    t0, __stack_start__
     la    t1, __stack_top__
     beq   t0, t1, 1f

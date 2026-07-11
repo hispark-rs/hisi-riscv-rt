@@ -13,6 +13,8 @@
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn runtime_init_riscvrt() {
     unsafe {
+        super::memory::__hisi_ws63_shared_ram_init();
+        super::cache::__hisi_ws63_cache_init();
         relocate_data();
         zero_extra_bss();
         core::arch::asm!(
@@ -29,6 +31,9 @@ unsafe fn relocate_data() {
         static mut __rom_data_begin__: u32;
         static mut __rom_data_end__: u32;
         static mut __rom_data_load__: u32;
+        static mut __wifi_rom_data_begin__: u32;
+        static mut __wifi_rom_data_end__: u32;
+        static mut __wifi_rom_data_load__: u32;
         static mut __tcm_text_begin__: u32;
         static mut __tcm_text_end__: u32;
         static mut __tcm_text_load__: u32;
@@ -51,6 +56,7 @@ unsafe fn relocate_data() {
         }
 
         copy_region!(__rom_data_load__, __rom_data_begin__, __rom_data_end__);
+        copy_region!(__wifi_rom_data_load__, __wifi_rom_data_begin__, __wifi_rom_data_end__);
         copy_region!(__tcm_text_load__, __tcm_text_begin__, __tcm_text_end__);
         copy_region!(__tcm_data_load__, __tcm_data_begin__, __tcm_data_end__);
         copy_region!(__sram_text_load__, __sram_text_begin__, __sram_text_end__);

@@ -33,6 +33,11 @@
     li    t5, 0x44010004
     li    t6, \ch
     sh    t6, 0(t5)
+2:
+    li    t5, 0x44010044
+    lhu   t6, 0(t5)
+    andi  t6, t6, 2
+    beqz  t6, 2b
 .endif
 .endm
 
@@ -530,6 +535,15 @@ __INTERRUPTS_end:
 .align 4
 trap_entry:
     save_all
+    startup_uart_mark 84, 82, 80, 33
+
+.if __hisi_startup_uart_trace
+    mv a0, s3
+    mv a1, s0
+    mv a2, s2
+    mv a3, s4
+    call __hisi_startup_trace_trap
+.endif
 
     # Mask interrupts during exception handling
     csrci mstatus, 0x08
@@ -582,6 +596,7 @@ handle_ecall_m:
 # `__rt_irq_dispatch` (which routes to the named device.x handler, or is a no-op by
 # default), then restore and `mret` with MIE re-enabled.
 _handle_interrupt:
+    startup_uart_mark 73, 82, 81, 33
     csrw mscratch, sp
     la   sp, __irq_stack_top__
     slli t0, s3, 1              # shift out mcause bit31 (interrupt flag)
@@ -600,6 +615,7 @@ _handle_interrupt:
 .section .trap.nmi, "ax"
 .align 4
 nmi_vector:
+    startup_uart_mark 78, 77, 73, 33
     csrci mstatus, 0x08        # Disable interrupts
     save_all
 
@@ -732,10 +748,12 @@ StorePageFault: j .
 /* ── Default handler (used by device.x PROVIDE entries) ──── */
 .weak default_handler
 default_handler:
+    startup_uart_mark 68, 70, 72, 33
     j .
 
 .weak default_exc_handler
 default_exc_handler:
+    startup_uart_mark 68, 69, 72, 33
     j .
 
 .weak nmi_handler

@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+- Add the ABI-fixed WS63 `.wifi_rom_data` DTCM window and relocate it
+  independently at startup, preserving the preceding platform ROM data.
+
+### Fixed
+
+- Reserve the official WS63 8 KiB radar RX and 256-byte preserved regions
+  outside the application heap, and export the default NV partition contract.
+
 ## [0.5.1]
 
 ### Fixed

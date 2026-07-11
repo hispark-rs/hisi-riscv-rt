@@ -8,6 +8,9 @@
 //!   _setup_interrupts → runtime_init_riscvrt (ROM/TCM/SRAM reloc, MIE) →
 //!   mtvec set → j main
 
+mod cache;
+mod memory;
+
 #[cfg(not(feature = "riscv-rt-start-experiment"))]
 mod startup;
 #[cfg(feature = "riscv-rt-start-experiment")]

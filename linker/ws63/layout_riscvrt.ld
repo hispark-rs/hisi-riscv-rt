@@ -33,29 +33,22 @@ SECTIONS
      *  Contains: patch tables, ROM veneer callbacks, TCM text
      * ================================================================ */
 
-    /* Patch table (ROM function patch redirection) */
+    /* The mask-ROM ABI reserves 194 long-jump entries (0x610 bytes) and
+       197 compare words (0x314 bytes), rounded up to an 8-byte boundary.
+       Even when patch redirection is disabled, the following ROM callback
+       veneer table must start at the same fixed address as the vendor image. */
     .patch ORIGIN(ITCM) (NOLOAD) : AT(ORIGIN(ITCM)) {
         . = ALIGN(8);
         __rom_patch_load__ = LOADADDR(.patch);
         __rom_patch_begin__ = .;
         KEEP(*(.patch_remap))
         KEEP(*(.patch_cmp))
+        . = ORIGIN(ITCM) + 0x928;
+        __rom_patch_end__ = .;
     } > ITCM
 
-    /* ROM RAM callback veneers (ROM→RAM jump trampolines) */
-    .rom_ram_cb_text : ALIGN(8) {
-        __rom_patch_end__ = .;
-    } > ITCM AT > PROGRAM
-
-    /* TCM text (hot code placed in fast ITCM) */
-    .text_tcm : ALIGN(8) {
-        __tcm_text_load__ = LOADADDR(.text_tcm);
-        __tcm_text_begin__ = .;
-        *(.text.tcm .text.tcm.*)
-        *(.rodata.tcm .rodata.tcm.*)
-        . = ALIGN(4);
-        __tcm_text_end__ = .;
-    } > ITCM AT > PROGRAM
+    ASSERT(__rom_patch_end__ == ORIGIN(ITCM) + 0x928,
+           "WS63 ROM patch ABI prefix has the wrong size")
 
     /* ================================================================
      *  DTCM sections (Data TCM)
@@ -71,13 +64,18 @@ SECTIONS
         . = ALIGN(4);
     } > DTCM AT > PROGRAM
 
-    .rom_bss (NOLOAD) : AT(.) {
-        . = ALIGN(8);
+    /* Mask-ROM BSS addresses are part of the silicon ABI, not inferred from
+       linked input sections. In particular, the FRW callback table lives at
+       0x181008 and must start zeroed on every application boot. */
+    .rom_bss 0x1803e0 (NOLOAD) : AT(0x1803e0) {
         __rom_bss_begin__ = .;
         *(.rom_bss .rom_bss.*)
-        . = ALIGN(4);
+        . = 0x182888;
         __rom_bss_end__ = .;
     } > DTCM
+
+    ASSERT(__rom_bss_begin__ == 0x1803e0 && __rom_bss_end__ == 0x182888,
+           "WS63 mask-ROM BSS ABI range drifted")
 
     /* TCM data (copied from flash to DTCM by runtime_init) */
     .data_tcm : ALIGN(8) {
@@ -179,11 +177,58 @@ SECTIONS
         . = ALIGN(8);
     } > PROGRAM
 
+    /* Define ITCM-loaded sections only after the flash text so their LMAs do
+       not collide with the explicit PROGRAM entry at 0x230300. */
+    .rom_ram_cb_text (ORIGIN(ITCM) + 0x928) : ALIGN(8) {
+        __tcm_text_load__ = LOADADDR(.rom_ram_cb_text);
+        __tcm_text_begin__ = .;
+        KEEP(*(.*.romcall.text))
+    } > ITCM AT > PROGRAM
+
+    .text_tcm : ALIGN(8) {
+        *(.text.tcm .text.tcm.*)
+        *(.rodata.tcm .rodata.tcm.*)
+        . = ALIGN(4);
+        __tcm_text_end__ = .;
+    } > ITCM AT > PROGRAM
+
+    ASSERT(!DEFINED(__wrap_log_event_wifi_print1) ||
+           __wrap_log_event_wifi_print1 == 0x14ce28,
+           "WS63 ROM callback veneer order/address drifted")
+
     /* ================================================================
      *  SRAM writable sections (.data, .bss, stacks, heap)
      * ================================================================ */
 
     /* Initialized data (copied from flash to SRAM) */
+    /* Capture the ABI-fixed Wi-Fi ROM globals before generic .data. */
+    .wifi_rom_data (ORIGIN(DTCM) + 0xd8) : ALIGN(1) {
+        __wifi_rom_data_load__ = LOADADDR(.wifi_rom_data);
+        __wifi_rom_data_begin__ = .;
+        KEEP(*(.data.g_ltf_and_gi))
+        . += 2;
+        KEEP(*(.data.g_11b_per_cnt))
+        KEEP(*(.data.g_dmac_algorithm_main))
+        KEEP(*(.data.g_temp_protect_aggr_max_mpdu))
+        KEEP(*(.data.g_btcoex_aggr_max_mpdu))
+        KEEP(*(.data.g_smooth_phase))
+        KEEP(*(.data.g_rf_switch_cfg))
+        KEEP(*(.data.g_mac_pa_switch))
+        . += 3;
+        KEEP(*(.data.g_hal_cfg_custom))
+        KEEP(*(.data.g_mac_res))
+        KEEP(*(.data.g_buf_size))
+        . += 2;
+        KEEP(*(.data.g_mem_start_addr_cfg))
+        KEEP(*(.data.g_skb_size))
+        __wifi_rom_data_end__ = .;
+    } > DTCM AT > PROGRAM
+
+    ASSERT(SIZEOF(.rom_data) <= 0xd8,
+           "platform ROM data overlaps the WS63 Wi-Fi ROM-data ABI window")
+    ASSERT(!DEFINED(g_rf_switch_cfg) || g_rf_switch_cfg == 0x1800eb,
+           "WS63 g_rf_switch_cfg address drifted from the mask-ROM ABI")
+
     .data : ALIGN(8) {
         __data_load__ = LOADADDR(.data);
         __data_begin__ = .;
@@ -266,6 +311,9 @@ SECTIONS
         . = ALIGN(8);
         __heap_start__ = .;
         PROVIDE(g_intheap_begin = .);
-        PROVIDE(g_intheap_size = ORIGIN(SRAM) + LENGTH(SRAM) - g_intheap_begin);
+        __heap_end__ = ORIGIN(PRESERVE);
+        PROVIDE(g_intheap_size = __heap_end__ - g_intheap_begin);
     } > SRAM
+
+    ASSERT(__heap_start__ <= __heap_end__, "WS63 SRAM overflow: no room remains for heap")
 }
