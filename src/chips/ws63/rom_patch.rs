@@ -22,8 +22,8 @@ pub(super) unsafe extern "C" fn __hisi_ws63_rom_patch_enable() {
         static __rom_patch_cmp_begin__: u32;
     }
 
-    let remap = &raw const __rom_patch_begin__ as *const u32;
-    let compare = &raw const __rom_patch_cmp_begin__ as *const u32;
+    let remap = &raw const __rom_patch_begin__;
+    let compare = &raw const __rom_patch_cmp_begin__;
     let entry_count = unsafe { compare.add(2).read() } as usize;
     if entry_count == 0 || entry_count > INSTRUCTION_COMPARE_COUNT {
         return;
