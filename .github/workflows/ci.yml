@@ -44,6 +44,16 @@ jobs:
             --no-default-features --features chip-ws63,boot-header -- -D warnings
           cargo +"$TOOLCHAIN" clippy -Zbuild-std=core,alloc --locked --target "$TARGET" \
             --no-default-features --features chip-bs21,unstable -- -D warnings
+      - name: Link adapter smoke images
+        env:
+          RUSTFLAGS: -C link-arg=-Thisi-riscv-link.x
+        run: |
+          cargo +"$TOOLCHAIN" build -Zbuild-std=core,alloc --locked --target "$TARGET" \
+            --release --example link_smoke --no-default-features \
+            --features chip-ws63,boot-header,bundled-memory-x
+          cargo +"$TOOLCHAIN" build -Zbuild-std=core,alloc --locked --target "$TARGET" \
+            --release --example link_smoke --no-default-features \
+            --features chip-bs21,unstable,bundled-memory-x
       - name: Docs
         run: cargo +"$TOOLCHAIN" doc -Zbuild-std=core,alloc --locked --no-deps --document-private-items --target "$TARGET"
         env:

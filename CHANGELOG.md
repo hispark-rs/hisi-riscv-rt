@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.5.3] - 2026-07-12
+
+### Fixed
+
+- Keep the ABI-fixed WS63 Wi-Fi ROM-data relocation out of the BS2X legacy
+  startup path. `chip-bs21,unstable` now links without requiring WS63-only
+  linker symbols.
+- Add a minimal linked firmware example and build both WS63 and BS21 images in
+  CI, so adapter-specific undefined symbols cannot hide behind `cargo check`.
+
 ## [0.5.2] - 2026-07-12
 
 ### Added

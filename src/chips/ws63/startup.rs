@@ -149,9 +149,12 @@ unsafe fn relocate_data() {
         static mut __rom_data_end__: u32;
         static mut __rom_data_load__: u32;
 
-        // Wi-Fi ROM data: flash → ABI-fixed DTCM window
+        // Wi-Fi ROM data: flash → ABI-fixed DTCM window (WS63 only)
+        #[cfg(feature = "chip-ws63")]
         static mut __wifi_rom_data_begin__: u32;
+        #[cfg(feature = "chip-ws63")]
         static mut __wifi_rom_data_end__: u32;
+        #[cfg(feature = "chip-ws63")]
         static mut __wifi_rom_data_load__: u32;
 
         // Mask-ROM instruction patch table: flash → ITCM
@@ -215,15 +218,18 @@ unsafe fn relocate_data() {
                 count,
             );
         }
-        let begin = &raw const __wifi_rom_data_begin__ as usize;
-        let end = &raw const __wifi_rom_data_end__ as usize;
-        let count = range_len(begin, end);
-        if count > 0 {
-            core::ptr::copy_nonoverlapping(
-                &raw const __wifi_rom_data_load__ as *const u8,
-                &raw mut __wifi_rom_data_begin__ as *mut u8,
-                count,
-            );
+        #[cfg(feature = "chip-ws63")]
+        {
+            let begin = &raw const __wifi_rom_data_begin__ as usize;
+            let end = &raw const __wifi_rom_data_end__ as usize;
+            let count = range_len(begin, end);
+            if count > 0 {
+                core::ptr::copy_nonoverlapping(
+                    &raw const __wifi_rom_data_load__ as *const u8,
+                    &raw mut __wifi_rom_data_begin__ as *mut u8,
+                    count,
+                );
+            }
         }
         startup_mark4(b'R', b'D', b'1', b'!');
         // Zero ROM BSS in DTCM
