@@ -33,9 +33,17 @@ jobs:
           rustc +"$TOOLCHAIN" --version
           rustc +"$TOOLCHAIN" --print target-list | grep -qx "$TARGET"
       - name: Check
-        run: cargo +"$TOOLCHAIN" check -Zbuild-std=core,alloc --locked --target "$TARGET"
+        run: |
+          cargo +"$TOOLCHAIN" check -Zbuild-std=core,alloc --locked --target "$TARGET" \
+            --no-default-features --features chip-ws63,boot-header
+          cargo +"$TOOLCHAIN" check -Zbuild-std=core,alloc --locked --target "$TARGET" \
+            --no-default-features --features chip-bs21,unstable
       - name: Clippy
-        run: cargo +"$TOOLCHAIN" clippy -Zbuild-std=core,alloc --locked --target "$TARGET" -- -D warnings
+        run: |
+          cargo +"$TOOLCHAIN" clippy -Zbuild-std=core,alloc --locked --target "$TARGET" \
+            --no-default-features --features chip-ws63,boot-header -- -D warnings
+          cargo +"$TOOLCHAIN" clippy -Zbuild-std=core,alloc --locked --target "$TARGET" \
+            --no-default-features --features chip-bs21,unstable -- -D warnings
       - name: Docs
         run: cargo +"$TOOLCHAIN" doc -Zbuild-std=core,alloc --locked --no-deps --document-private-items --target "$TARGET"
         env:

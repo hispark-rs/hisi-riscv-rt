@@ -9,7 +9,9 @@
 //!   mtvec set → j main
 
 mod cache;
+#[cfg(feature = "chip-ws63")]
 mod memory;
+#[cfg(feature = "chip-ws63")]
 mod rom_patch;
 
 #[cfg(not(feature = "riscv-rt-start-experiment"))]

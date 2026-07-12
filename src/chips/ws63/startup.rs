@@ -20,7 +20,10 @@ pub unsafe extern "C" fn runtime_init() -> ! {
 
     // The configurable banks backing ITCM/DTCM must be assigned before either
     // cache setup or relocation. This is the vendor runtime's dyn_mem_cfg step.
-    unsafe { super::memory::__hisi_ws63_shared_ram_init() };
+    #[cfg(feature = "chip-ws63")]
+    unsafe {
+        super::memory::__hisi_ws63_shared_ram_init()
+    };
 
     // Match the vendor runtime: invalidate and enable caches before any
     // application relocation or vendor ROM call.
@@ -34,7 +37,10 @@ pub unsafe extern "C" fn runtime_init() -> ! {
 
     // The post-link generated table is now resident in ITCM. Enable the
     // controller only when the table contains at least one ROM redirection.
-    unsafe { super::rom_patch::__hisi_ws63_rom_patch_enable() };
+    #[cfg(feature = "chip-ws63")]
+    unsafe {
+        super::rom_patch::__hisi_ws63_rom_patch_enable()
+    };
 
     startup_mark4(b'R', b'T', b'3', b'!');
 
