@@ -63,11 +63,6 @@ PROVIDE(__flash_length = LENGTH(FLASH));
 PROVIDE(__program_start = ORIGIN(PROGRAM));
 PROVIDE(__program_length = LENGTH(PROGRAM));
 
-/* Default WS63 partition-map contract used by the RF read-only NV adapter.
-   The address and 16K burn range match the official ws63_all_nv partition. */
-PROVIDE(__nv_storage_start = 0x5FC000);
-PROVIDE(__nv_storage_length = 0x4000);
-
 /* Stack sizes (can be overridden by user) */
 __stack_size = DEFINED(__stack_size) ? __stack_size : 0x2000;     /* 8KB user stack */
 __irq_stack_size = DEFINED(__irq_stack_size) ? __irq_stack_size : 0x800;   /* 2KB IRQ */
