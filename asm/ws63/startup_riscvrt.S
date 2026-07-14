@@ -514,10 +514,10 @@ __INTERRUPTS:
     .word GPIO_INT0            # 33
     .word GPIO_INT1            # 34
     .word GPIO_INT2            # 35
-    .word DefaultHandler        # 36 (gap)
-    .word DefaultHandler        # 37 (gap)
-    .word DefaultHandler        # 38 (gap)
-    .word DefaultHandler        # 39 (gap)
+    .word SOFT_INT0             # 36
+    .word SOFT_INT1             # 37
+    .word SOFT_INT2             # 38
+    .word SOFT_INT3             # 39
     .word COEX_WL_INT          # 40
     .word COEX_BT_INT          # 41
     .word COEX_WIFI_RESUME_INT # 42
