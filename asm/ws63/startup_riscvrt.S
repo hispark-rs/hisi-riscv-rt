@@ -244,6 +244,7 @@ mie_interrupt\num\()_handler:
     li   a0, \label
     call __rt_irq_dispatch
     csrr sp, mscratch
+    call __hisi_irq_epilogue
     li   t0, 0x1880
     csrs mstatus, t0
     pop_reg
@@ -264,6 +265,7 @@ local_interrupt_handler:
     la   sp, __irq_stack_top__
     call local_isr_dispatch
     csrr sp, mscratch
+    call __hisi_irq_epilogue
     li   t0, 0x1880
     csrs mstatus, t0
     pop_reg
@@ -337,6 +339,11 @@ mie5_interrupt_handler: ret
 
 .weak local_isr_dispatch
 local_isr_dispatch: ret
+
+# Default target for the linker-provided __hisi_irq_epilogue alias. The distinct
+# name lets an RTOS provide the public symbol without an object-level collision.
+.global __hisi_irq_epilogue_default
+__hisi_irq_epilogue_default: ret
 
 .weak __rt_irq_dispatch
 __rt_irq_dispatch:

@@ -603,6 +603,7 @@ _handle_interrupt:
     srli a0, t0, 1             # a0 = IRQ number (exception code)
     call __rt_irq_dispatch
     csrr sp, mscratch
+    call __hisi_irq_epilogue
     li   t0, 0x1880            # MPP=M-mode, MPIE=1 -> MIE re-enabled after mret
     csrs mstatus, t0
     restore_all
@@ -645,6 +646,7 @@ mie_interrupt\n\()_handler:
     la   sp, __irq_stack_top__
     call mie\n\()_interrupt_handler   # -> mie0_interrupt_handler .. mie5_interrupt_handler (weak defaults below)
     csrr sp, mscratch
+    call __hisi_irq_epilogue
     li   t0, 0x1880
     csrs mstatus, t0
     pop_reg
@@ -671,6 +673,7 @@ local_interrupt_handler:
     la   sp, __irq_stack_top__
     call local_isr_dispatch
     csrr sp, mscratch
+    call __hisi_irq_epilogue
     li   t0, 0x1880
     csrs mstatus, t0
     pop_reg
@@ -786,6 +789,13 @@ mie5_interrupt_handler:
 
 .weak local_isr_dispatch
 local_isr_dispatch:
+    ret
+
+# Default target for the linker-provided __hisi_irq_epilogue alias. Keeping the
+# default under a distinct name avoids global_asm/LTO duplicate-symbol failures
+# when an RTOS supplies a strong __hisi_irq_epilogue implementation.
+.global __hisi_irq_epilogue_default
+__hisi_irq_epilogue_default:
     ret
 
 # Default interrupt dispatcher (DIRECT-mode path). `a0` = IRQ number. Indexes the

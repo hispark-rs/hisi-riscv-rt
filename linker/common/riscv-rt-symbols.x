@@ -1,11 +1,16 @@
 /* riscv-rt v0.14 compatibility symbols for hisi-riscv-rt.
-   Loaded LAST. Uses direct assignment (=) not PROVIDE because
-   riscv-rt's rlib already references these as weak extern. */
+   Loaded LAST. Required riscv-rt symbols use direct assignment because its
+   rlib already references them as weak extern; optional hooks use PROVIDE. */
 
 /* Stack symbols */
 _stack_start = DEFINED(__stack_top__) ? __stack_top__ : ORIGIN(SRAM) + LENGTH(SRAM);
 _max_hart_id = 0;
 _hart_stack_size = DEFINED(__stack_size) ? __stack_size : 0x2000;
+
+/* Optional deferred scheduling hook. The startup assembly owns the no-op
+   implementation under a distinct name so a Rust RTOS can define the public
+   symbol without colliding with global_asm during LTO. */
+PROVIDE(__hisi_irq_epilogue = __hisi_irq_epilogue_default);
 
 /* Data/bss symbols */
 __sidata = LOADADDR(.data);
