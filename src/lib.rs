@@ -45,6 +45,7 @@ compile_error!("hisi-riscv-rt `riscv-rt-start-experiment` is experimental; enabl
 core::arch::global_asm!(concat!(
     ".set __hisi_chip_ws63, 1\n",
     ".set __hisi_startup_uart_trace, 1\n",
+    include_str!("../asm/ws63/task_context.S"),
     include_str!("../asm/ws63/startup.S")
 ));
 
@@ -55,6 +56,7 @@ core::arch::global_asm!(concat!(
 ))]
 core::arch::global_asm!(concat!(
     ".set __hisi_chip_ws63, 1\n",
+    include_str!("../asm/ws63/task_context.S"),
     include_str!("../asm/ws63/startup.S")
 ));
 
@@ -74,6 +76,7 @@ core::arch::global_asm!(concat!(
 #[cfg(all(feature = "chip-bs21", not(feature = "riscv-rt-start-experiment")))]
 core::arch::global_asm!(concat!(
     ".set __hisi_chip_bs2x, 1\n",
+    include_str!("../asm/ws63/task_context.S"),
     include_str!("../asm/ws63/startup.S")
 ));
 

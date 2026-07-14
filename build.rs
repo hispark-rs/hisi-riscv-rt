@@ -40,6 +40,7 @@ fn main() {
     let bs2x_boot_header_x = Path::new("linker/bs2x/boot-header.x");
     let symbols_x = Path::new("linker/common/riscv-rt-symbols.x");
     let startup_s = Path::new("asm/ws63/startup.S");
+    let task_context_s = Path::new("asm/ws63/task_context.S");
 
     println!("cargo:rerun-if-changed={}", ws63_memory_x.display());
     println!("cargo:rerun-if-changed={}", ws63_layout_ld.display());
@@ -49,6 +50,7 @@ fn main() {
     println!("cargo:rerun-if-changed={}", bs2x_boot_header_x.display());
     println!("cargo:rerun-if-changed={}", symbols_x.display());
     println!("cargo:rerun-if-changed={}", startup_s.display());
+    println!("cargo:rerun-if-changed={}", task_context_s.display());
     let startup_riscvrt_s = Path::new("asm/ws63/startup_riscvrt.S");
     println!("cargo:rerun-if-changed={}", startup_riscvrt_s.display());
 

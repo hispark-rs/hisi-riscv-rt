@@ -1,4 +1,6 @@
 # ----------------------------------------------------------------------
+
+#include "task_context.S"
 #  WS63 startup assembly for riscv-rt-start-experiment
 #
 #  Compiled via cc (not global_asm!) to avoid LTO symbol conflicts with
@@ -120,8 +122,88 @@ excp_vect_table:
 # ======================================================================
 #  Push/pop register macros
 # ======================================================================
+.macro save_fpu offset
+    .option push
+    .option arch, +f
+    fsw f0,  (\offset +  0)*4(sp)
+    fsw f1,  (\offset +  1)*4(sp)
+    fsw f2,  (\offset +  2)*4(sp)
+    fsw f3,  (\offset +  3)*4(sp)
+    fsw f4,  (\offset +  4)*4(sp)
+    fsw f5,  (\offset +  5)*4(sp)
+    fsw f6,  (\offset +  6)*4(sp)
+    fsw f7,  (\offset +  7)*4(sp)
+    fsw f8,  (\offset +  8)*4(sp)
+    fsw f9,  (\offset +  9)*4(sp)
+    fsw f10, (\offset + 10)*4(sp)
+    fsw f11, (\offset + 11)*4(sp)
+    fsw f12, (\offset + 12)*4(sp)
+    fsw f13, (\offset + 13)*4(sp)
+    fsw f14, (\offset + 14)*4(sp)
+    fsw f15, (\offset + 15)*4(sp)
+    fsw f16, (\offset + 16)*4(sp)
+    fsw f17, (\offset + 17)*4(sp)
+    fsw f18, (\offset + 18)*4(sp)
+    fsw f19, (\offset + 19)*4(sp)
+    fsw f20, (\offset + 20)*4(sp)
+    fsw f21, (\offset + 21)*4(sp)
+    fsw f22, (\offset + 22)*4(sp)
+    fsw f23, (\offset + 23)*4(sp)
+    fsw f24, (\offset + 24)*4(sp)
+    fsw f25, (\offset + 25)*4(sp)
+    fsw f26, (\offset + 26)*4(sp)
+    fsw f27, (\offset + 27)*4(sp)
+    fsw f28, (\offset + 28)*4(sp)
+    fsw f29, (\offset + 29)*4(sp)
+    fsw f30, (\offset + 30)*4(sp)
+    fsw f31, (\offset + 31)*4(sp)
+    frcsr t0
+    sw t0, (\offset + 32)*4(sp)
+    .option pop
+.endm
+
+.macro restore_fpu offset
+    .option push
+    .option arch, +f
+    lw t0, (\offset + 32)*4(sp)
+    fscsr t0
+    flw f0,  (\offset +  0)*4(sp)
+    flw f1,  (\offset +  1)*4(sp)
+    flw f2,  (\offset +  2)*4(sp)
+    flw f3,  (\offset +  3)*4(sp)
+    flw f4,  (\offset +  4)*4(sp)
+    flw f5,  (\offset +  5)*4(sp)
+    flw f6,  (\offset +  6)*4(sp)
+    flw f7,  (\offset +  7)*4(sp)
+    flw f8,  (\offset +  8)*4(sp)
+    flw f9,  (\offset +  9)*4(sp)
+    flw f10, (\offset + 10)*4(sp)
+    flw f11, (\offset + 11)*4(sp)
+    flw f12, (\offset + 12)*4(sp)
+    flw f13, (\offset + 13)*4(sp)
+    flw f14, (\offset + 14)*4(sp)
+    flw f15, (\offset + 15)*4(sp)
+    flw f16, (\offset + 16)*4(sp)
+    flw f17, (\offset + 17)*4(sp)
+    flw f18, (\offset + 18)*4(sp)
+    flw f19, (\offset + 19)*4(sp)
+    flw f20, (\offset + 20)*4(sp)
+    flw f21, (\offset + 21)*4(sp)
+    flw f22, (\offset + 22)*4(sp)
+    flw f23, (\offset + 23)*4(sp)
+    flw f24, (\offset + 24)*4(sp)
+    flw f25, (\offset + 25)*4(sp)
+    flw f26, (\offset + 26)*4(sp)
+    flw f27, (\offset + 27)*4(sp)
+    flw f28, (\offset + 28)*4(sp)
+    flw f29, (\offset + 29)*4(sp)
+    flw f30, (\offset + 30)*4(sp)
+    flw f31, (\offset + 31)*4(sp)
+    .option pop
+.endm
+
 .macro push_reg
-    addi sp, sp, -34 * 4
+    addi sp, sp, -67 * 4
     sw x1,  4 * 0(sp)
     sw x4,  4 * 1(sp)
     sw x5,  4 * 2(sp)
@@ -161,9 +243,11 @@ excp_vect_table:
     sw t0,  4 * 32(sp)
     csrr t0, mscratch
     sw t0,  4 * 33(sp)
+    save_fpu 34
 .endm
 
 .macro pop_reg
+    restore_fpu 34
     lw t0,  4 * 33(sp)
     csrw mscratch, t0
     lw t0,  4 * 32(sp)
@@ -203,7 +287,7 @@ excp_vect_table:
     lw x5,  4 * 2(sp)
     lw x4,  4 * 1(sp)
     lw x1,  4 * 0(sp)
-    addi sp, sp, 34 * 4
+    addi sp, sp, 67 * 4
 .endm
 
 
@@ -238,17 +322,14 @@ nmi_vector:
 .macro mie_handler num label
 .section .trap.mie\num, "ax"
 mie_interrupt\num\()_handler:
-    push_reg
+    hisi_push_task_context
     csrw mscratch, sp
     la   sp, __irq_stack_top__
     li   a0, \label
     call __rt_irq_dispatch
-    csrr sp, mscratch
+    csrr a0, mscratch
     call __hisi_irq_epilogue
-    li   t0, 0x1880
-    csrs mstatus, t0
-    pop_reg
-    mret
+    j    __hisi_resume_trap
 .endm
 
 mie_handler 0 26
@@ -260,15 +341,20 @@ mie_handler 5 31
 
 .section .trap.local, "ax"
 local_interrupt_handler:
-    push_reg
+    hisi_push_task_context
     csrw mscratch, sp
     la   sp, __irq_stack_top__
     call local_isr_dispatch
-    csrr sp, mscratch
+    csrr a0, mscratch
     call __hisi_irq_epilogue
-    li   t0, 0x1880
-    csrs mstatus, t0
-    pop_reg
+    j    __hisi_resume_trap
+
+.section .text.__hisi_resume_trap, "ax"
+.align 4
+.global __hisi_resume_trap
+__hisi_resume_trap:
+    mv   sp, a0
+    hisi_pop_task_context
     mret
 
 

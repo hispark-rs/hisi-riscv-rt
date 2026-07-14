@@ -375,81 +375,91 @@ __INTERRUPTS_end:
 
 .equ ccause, 0xFC2    # WS63 custom CSR for extended exception cause
 
-# Lightweight: 32-word save for interrupt handlers
-.macro push_reg
-    addi sp, sp, -32*4
-    sw ra,  0*4(sp)
-    sw sp,  1*4(sp)
-    sw gp,  2*4(sp)
-    sw tp,  3*4(sp)
-    sw t0,  4*4(sp)
-    sw t1,  5*4(sp)
-    sw t2,  6*4(sp)
-    sw s0,  7*4(sp)
-    sw s1,  8*4(sp)
-    sw a0,  9*4(sp)
-    sw a1, 10*4(sp)
-    sw a2, 11*4(sp)
-    sw a3, 12*4(sp)
-    sw a4, 13*4(sp)
-    sw a5, 14*4(sp)
-    sw a6, 15*4(sp)
-    sw a7, 16*4(sp)
-    sw s2, 17*4(sp)
-    sw s3, 18*4(sp)
-    sw s4, 19*4(sp)
-    sw s5, 20*4(sp)
-    sw s6, 21*4(sp)
-    sw s7, 22*4(sp)
-    sw s8, 23*4(sp)
-    sw s9, 24*4(sp)
-    sw s10,25*4(sp)
-    sw s11,26*4(sp)
-    sw t3, 27*4(sp)
-    sw t4, 28*4(sp)
-    sw t5, 29*4(sp)
-    sw t6, 30*4(sp)
-    csrr t0, mepc
-    sw   t0, 31*4(sp)
+# Save all floating-point state after an integer trap frame. The offset is in
+# words and the caller has already preserved t0.
+.macro save_fpu offset
+    .option push
+    .option arch, +f
+    fsw f0,  (\offset +  0)*4(sp)
+    fsw f1,  (\offset +  1)*4(sp)
+    fsw f2,  (\offset +  2)*4(sp)
+    fsw f3,  (\offset +  3)*4(sp)
+    fsw f4,  (\offset +  4)*4(sp)
+    fsw f5,  (\offset +  5)*4(sp)
+    fsw f6,  (\offset +  6)*4(sp)
+    fsw f7,  (\offset +  7)*4(sp)
+    fsw f8,  (\offset +  8)*4(sp)
+    fsw f9,  (\offset +  9)*4(sp)
+    fsw f10, (\offset + 10)*4(sp)
+    fsw f11, (\offset + 11)*4(sp)
+    fsw f12, (\offset + 12)*4(sp)
+    fsw f13, (\offset + 13)*4(sp)
+    fsw f14, (\offset + 14)*4(sp)
+    fsw f15, (\offset + 15)*4(sp)
+    fsw f16, (\offset + 16)*4(sp)
+    fsw f17, (\offset + 17)*4(sp)
+    fsw f18, (\offset + 18)*4(sp)
+    fsw f19, (\offset + 19)*4(sp)
+    fsw f20, (\offset + 20)*4(sp)
+    fsw f21, (\offset + 21)*4(sp)
+    fsw f22, (\offset + 22)*4(sp)
+    fsw f23, (\offset + 23)*4(sp)
+    fsw f24, (\offset + 24)*4(sp)
+    fsw f25, (\offset + 25)*4(sp)
+    fsw f26, (\offset + 26)*4(sp)
+    fsw f27, (\offset + 27)*4(sp)
+    fsw f28, (\offset + 28)*4(sp)
+    fsw f29, (\offset + 29)*4(sp)
+    fsw f30, (\offset + 30)*4(sp)
+    fsw f31, (\offset + 31)*4(sp)
+    frcsr t0
+    sw t0, (\offset + 32)*4(sp)
+    .option pop
 .endm
 
-.macro pop_reg
-    lw    t0, 31*4(sp)
-    csrw  mepc, t0
-    lw ra,   0*4(sp)
-    lw t0,   4*4(sp)
-    lw t1,   5*4(sp)
-    lw t2,   6*4(sp)
-    lw s0,   7*4(sp)
-    lw s1,   8*4(sp)
-    lw a0,   9*4(sp)
-    lw a1,  10*4(sp)
-    lw a2,  11*4(sp)
-    lw a3,  12*4(sp)
-    lw a4,  13*4(sp)
-    lw a5,  14*4(sp)
-    lw a6,  15*4(sp)
-    lw a7,  16*4(sp)
-    lw s2,  17*4(sp)
-    lw s3,  18*4(sp)
-    lw s4,  19*4(sp)
-    lw s5,  20*4(sp)
-    lw s6,  21*4(sp)
-    lw s7,  22*4(sp)
-    lw s8,  23*4(sp)
-    lw s9,  24*4(sp)
-    lw s10, 25*4(sp)
-    lw s11, 26*4(sp)
-    lw t3,  27*4(sp)
-    lw t4,  28*4(sp)
-    lw t5,  29*4(sp)
-    lw t6,  30*4(sp)
-    addi sp, sp, 32*4
+.macro restore_fpu offset
+    .option push
+    .option arch, +f
+    lw t0, (\offset + 32)*4(sp)
+    fscsr t0
+    flw f0,  (\offset +  0)*4(sp)
+    flw f1,  (\offset +  1)*4(sp)
+    flw f2,  (\offset +  2)*4(sp)
+    flw f3,  (\offset +  3)*4(sp)
+    flw f4,  (\offset +  4)*4(sp)
+    flw f5,  (\offset +  5)*4(sp)
+    flw f6,  (\offset +  6)*4(sp)
+    flw f7,  (\offset +  7)*4(sp)
+    flw f8,  (\offset +  8)*4(sp)
+    flw f9,  (\offset +  9)*4(sp)
+    flw f10, (\offset + 10)*4(sp)
+    flw f11, (\offset + 11)*4(sp)
+    flw f12, (\offset + 12)*4(sp)
+    flw f13, (\offset + 13)*4(sp)
+    flw f14, (\offset + 14)*4(sp)
+    flw f15, (\offset + 15)*4(sp)
+    flw f16, (\offset + 16)*4(sp)
+    flw f17, (\offset + 17)*4(sp)
+    flw f18, (\offset + 18)*4(sp)
+    flw f19, (\offset + 19)*4(sp)
+    flw f20, (\offset + 20)*4(sp)
+    flw f21, (\offset + 21)*4(sp)
+    flw f22, (\offset + 22)*4(sp)
+    flw f23, (\offset + 23)*4(sp)
+    flw f24, (\offset + 24)*4(sp)
+    flw f25, (\offset + 25)*4(sp)
+    flw f26, (\offset + 26)*4(sp)
+    flw f27, (\offset + 27)*4(sp)
+    flw f28, (\offset + 28)*4(sp)
+    flw f29, (\offset + 29)*4(sp)
+    flw f30, (\offset + 30)*4(sp)
+    flw f31, (\offset + 31)*4(sp)
+    .option pop
 .endm
 
-# Full save: 36-word save for exception handler (includes CSRs)
+# Full save: 36 integer/CSR words + 32 FPRs + fcsr
 .macro save_all
-    addi sp, sp, -36*4
+    addi sp, sp, -69*4
     sw s11,  8*4(sp)
     sw s10,  9*4(sp)
     sw s9,  10*4(sp)
@@ -491,9 +501,11 @@ __INTERRUPTS_end:
     sw   s0,  5*4(sp)
     sw   tp,  6*4(sp)
     sw   sp,  7*4(sp)
+    save_fpu 36
 .endm
 
 .macro restore_all
+    restore_fpu 36
     lw    t0, 5*4(sp)
     csrw  mepc, t0
     lw s11,  8*4(sp)
@@ -524,7 +536,7 @@ __INTERRUPTS_end:
     lw t1,  33*4(sp)
     lw t0,  34*4(sp)
     lw ra,  35*4(sp)
-    addi sp, sp, 36*4
+    addi sp, sp, 69*4
 .endm
 
 
@@ -534,6 +546,12 @@ __INTERRUPTS_end:
 .section .trap.exception, "ax"
 .align 4
 trap_entry:
+    addi sp, sp, -4
+    sw   t0, 0(sp)
+    csrr t0, mcause
+    bltz t0, .Ldirect_interrupt_entry
+    lw   t0, 0(sp)
+    addi sp, sp, 4
     save_all
     startup_uart_mark 84, 82, 80, 33
 
@@ -547,11 +565,6 @@ trap_entry:
 
     # Mask interrupts during exception handling
     csrci mstatus, 0x08
-
-    # In DIRECT mode all traps land here. mcause bit 31 distinguishes an interrupt
-    # (negative as a signed word) from an exception; route interrupts to the
-    # by-number named dispatcher and keep the exception path below unchanged.
-    bltz s3, _handle_interrupt
 
     # Save current sp, switch to exception stack
     csrw mscratch, sp
@@ -582,6 +595,12 @@ trap_entry:
     restore_all
     mret
 
+.Ldirect_interrupt_entry:
+    lw   t0, 0(sp)
+    addi sp, sp, 4
+    hisi_push_task_context
+    j _handle_interrupt
+
 # ECALL from M-mode: advance mepc by 4, then jump to handler
 handle_ecall_m:
     addi s0, s0, 4
@@ -591,23 +610,21 @@ handle_ecall_m:
     j 2b
 
 # ---- Interrupt path (DIRECT mode): dispatch by mcause IRQ number ----
-# Reached from trap_entry when mcause bit 31 is set. Context is already saved by
-# save_all (s3 = mcause). Compute the IRQ number, hand it to the weak
+# Reached from trap_entry when mcause bit 31 is set. The unified task context is
+# already saved by hisi_push_task_context. Compute the IRQ number, hand it to the weak
 # `__rt_irq_dispatch` (which routes to the named device.x handler, or is a no-op by
-# default), then restore and `mret` with MIE re-enabled.
+# default), then let the RTOS epilogue select the frame restored by mret.
 _handle_interrupt:
     startup_uart_mark 73, 82, 81, 33
     csrw mscratch, sp
     la   sp, __irq_stack_top__
-    slli t0, s3, 1              # shift out mcause bit31 (interrupt flag)
+    csrr t0, mcause
+    slli t0, t0, 1              # shift out mcause bit31 (interrupt flag)
     srli a0, t0, 1             # a0 = IRQ number (exception code)
     call __rt_irq_dispatch
-    csrr sp, mscratch
+    csrr a0, mscratch
     call __hisi_irq_epilogue
-    li   t0, 0x1880            # MPP=M-mode, MPIE=1 -> MIE re-enabled after mret
-    csrs mstatus, t0
-    restore_all
-    mret
+    j    __hisi_resume_trap
 
 
 # ======================================================================
@@ -641,16 +658,13 @@ nmi_vector:
 .align 4
 mie_interrupt\n\()_handler:
     csrci mstatus, 0x08
-    push_reg
+    hisi_push_task_context
     csrw mscratch, sp
     la   sp, __irq_stack_top__
     call mie\n\()_interrupt_handler   # -> mie0_interrupt_handler .. mie5_interrupt_handler (weak defaults below)
-    csrr sp, mscratch
+    csrr a0, mscratch           # unified TaskContext frame
     call __hisi_irq_epilogue
-    li   t0, 0x1880
-    csrs mstatus, t0
-    pop_reg
-    mret
+    j    __hisi_resume_trap
 .endm
 
 mie_interrupt_handler 0
@@ -668,15 +682,22 @@ mie_interrupt_handler 5
 .align 4
 local_interrupt_handler:
     csrci mstatus, 0x08
-    push_reg
+    hisi_push_task_context
     csrw mscratch, sp
     la   sp, __irq_stack_top__
     call local_isr_dispatch
-    csrr sp, mscratch
+    csrr a0, mscratch           # unified TaskContext frame
     call __hisi_irq_epilogue
-    li   t0, 0x1880
-    csrs mstatus, t0
-    pop_reg
+    j    __hisi_resume_trap
+
+# Resume the unified task frame selected by the RTOS epilogue. Every context
+# change reaches mret through this single exit.
+.section .text.__hisi_resume_trap, "ax"
+.align 4
+.global __hisi_resume_trap
+__hisi_resume_trap:
+    mv   sp, a0
+    hisi_pop_task_context
     mret
 
 
