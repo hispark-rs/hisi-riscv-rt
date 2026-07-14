@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.5.4] - 2026-07-14
+
+### Changed
+
+- Require `ws63-pac 0.3` so runtime and HAL firmware share the corrected
+  write-only timer EOI model and a single PAC singleton instance.
+
 ## [0.5.3] - 2026-07-12
 
 ### Fixed

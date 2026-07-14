@@ -1,6 +1,6 @@
 [package]
 name = "hisi-riscv-rt"
-version = "0.5.3"
+version = "0.5.4"
 edition = "2024"
 description = "Runtime support for HiSilicon RISC-V chips — entry, startup adapters, interrupt vectors, linker scripts"
 license = "MIT"
@@ -20,7 +20,7 @@ riscv-rt = "0.14"
 # Standalone consumers, CI, and publish resolve these from crates.io; the parent
 # workspace redirects them to local submodules through [patch.crates-io] during
 # development.
-ws63-pac = { version = "0.2", optional = true }
+ws63-pac = { version = "0.3", optional = true }
 bs2x-pac = { version = "0.1", optional = true }
 critical-section = "1"
 
