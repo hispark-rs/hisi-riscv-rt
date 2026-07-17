@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.5.5] - 2026-07-17
+
+### Changed
+
+- Require `ws63-pac 0.4` so runtime, HAL, and chip crypto firmware share the
+  audited register model and a single PAC singleton instance.
+
 ## [0.5.4] - 2026-07-14
 
 ### Changed

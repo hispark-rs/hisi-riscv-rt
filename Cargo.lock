@@ -27,7 +27,7 @@ checksum = "361a90feb7004eca4019fb28352a9465666b24f840f5c3cddf0ff13920590b89"
 
 [[package]]
 name = "hisi-riscv-rt"
-version = "0.5.4"
+version = "0.5.5"
 dependencies = [
  "bs2x-pac",
  "critical-section",
@@ -121,9 +121,9 @@ checksum = "b1376b15f3ff160e9b1e8ea564ce427f2f6fcf77528cc0a8bf405cb476f9cea7"
 
 [[package]]
 name = "syn"
-version = "2.0.118"
+version = "2.0.119"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b9ae57f904213ebb649ce6895b8a66c66f0203b9319718f69a5612a065b1422"
+checksum = "872831b642d1a07999a962a351ed35b955ea2cfc8f3862091e2a240a84f17297"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -144,9 +144,9 @@ checksum = "77439c1b53d2303b20d9459b1ade71a83c716e3f9c34f3228c00e6f185d6c002"
 
 [[package]]
 name = "ws63-pac"
-version = "0.3.0"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0c99311eba3f7b88f359749accf78a3c31918af1476f17086987169062c2066d"
+checksum = "62f3c6de31e8985f63f3fdf8db613ccd6051b13221a202fa8b54fb9f4eed4e3e"
 dependencies = [
  "critical-section",
  "riscv",
