@@ -298,15 +298,17 @@ pub(crate) mod chips;
 pub mod boot_header;
 
 #[cfg(feature = "chip-bs21")]
-#[cfg_attr(doc, doc(cfg(feature = "chip-bs21")))]
+#[cfg_attr(docsrs, doc(cfg(feature = "chip-bs21")))]
 pub use bs2x_pac::interrupt;
 /// WS63 interrupt enumeration and helpers.
 ///
 /// Re-exports [`ws63_pac::interrupt`] which provides:
-/// - [`ExternalInterrupt`] — all peripheral interrupt variants
+/// - [`ws63_pac::interrupt::ExternalInterrupt`] — all peripheral interrupt variants
 ///   (`TIMER_INT0`, `GPIO_INT0`, `SOFT_INT0`, …)
-/// - [`cause()`] / [`try_cause()`] — read the current trap cause
-/// - [`enable()`] / [`disable()`] — global interrupt mask (`mstatus.MIE`)
+/// - [`ws63_pac::interrupt::cause()`] / [`ws63_pac::interrupt::try_cause()`] — read
+///   the current trap cause
+/// - [`ws63_pac::interrupt::enable()`] / [`ws63_pac::interrupt::disable()`] — global
+///   interrupt mask (`mstatus.MIE`)
 ///
 /// # WS63 interrupt tiers
 ///
@@ -317,7 +319,7 @@ pub use bs2x_pac::interrupt;
 ///
 /// See the `chips::ws63` source module for the full IRQ map and memory layout.
 #[cfg(feature = "chip-ws63")]
-#[cfg_attr(doc, doc(cfg(feature = "chip-ws63")))]
+#[cfg_attr(docsrs, doc(cfg(feature = "chip-ws63")))]
 pub use ws63_pac::interrupt;
 
 pub use rt_core::{entry, pre_init};
@@ -334,9 +336,9 @@ pub use rt_core::{entry, pre_init};
 pub mod prelude {
     pub use crate::{entry, pre_init};
     #[cfg(feature = "chip-bs21")]
-    #[cfg_attr(doc, doc(cfg(feature = "chip-bs21")))]
+    #[cfg_attr(docsrs, doc(cfg(feature = "chip-bs21")))]
     pub use bs2x_pac::interrupt::ExternalInterrupt as Interrupt;
     #[cfg(feature = "chip-ws63")]
-    #[cfg_attr(doc, doc(cfg(feature = "chip-ws63")))]
+    #[cfg_attr(docsrs, doc(cfg(feature = "chip-ws63")))]
     pub use ws63_pac::interrupt::ExternalInterrupt as Interrupt;
 }
