@@ -6,7 +6,7 @@
 //!
 //! | Chip | Module | Feature | Status |
 //! |---|---|---|---|
-//! | WS63 | [`ws63`] | `chip-ws63` | stable |
+//! | WS63 | `ws63` | `chip-ws63` | stable |
 //! | BS2X family | `bs2x` | `chip-bs21` | experimental (`unstable`) |
 
 #[cfg(feature = "chip-bs21")]

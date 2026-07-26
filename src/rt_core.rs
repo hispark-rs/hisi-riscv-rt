@@ -17,12 +17,12 @@
 /// - Enabled the FPU (`mstatus.FS = Dirty`)
 /// - Set `mie` bits for TIMER0-2, RTC, I2C0, I2C1
 ///
-/// These specifics vary by chip; see the chip adapter module for the exact
-/// sequence (e.g. [`chips::ws63`]).
+/// These specifics vary by chip; see the selected chip adapter source module
+/// (for example, `chips::ws63`) for the exact sequence.
 ///
 /// # Chip-specific behaviour
 ///
-/// See the [`chips`](crate::chips) module for chip-specific startup details.
+/// See the crate's `chips` source module for chip-specific startup details.
 pub use riscv_rt::entry;
 
 /// Runs a function before [`entry`] — typically for custom early

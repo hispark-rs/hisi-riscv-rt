@@ -114,7 +114,7 @@
 //! The handler is called by the assembly entry with the following environment
 //! already set up:
 //!
-//! - 272-byte unified [`TaskContext`] frame has been saved via
+//! - A 272-byte unified `TaskContext` frame has been saved via
 //!   `hisi_push_task_context`.
 //! - `sp` points to the **IRQ stack** (`__irq_stack_top__`).
 //! - Machine interrupts are disabled; the entry will re-enable them on exit.
@@ -208,8 +208,9 @@
 //!   handler name, the linker silently picks one — there is no error.
 //! - **Stack sizing**: ensure each stack is large enough for its worst-case
 //!   depth. The runtime does not perform stack overflow checking.
-//! - **Chip-specific addresses are in chip adapter docs**: see
-//!   [`chips::ws63`] or [`chips::bs2x`] for memory maps and startup sequences.
+//! - **Chip-specific addresses are in chip adapter docs**: see the
+//!   `chips::ws63` or `chips::bs2x` source modules for memory maps and startup
+//!   sequences.
 //!
 //! # Linker conventions
 //!
@@ -314,7 +315,7 @@ pub use bs2x_pac::interrupt;
 /// | 26–31 | Standard RISC-V `mie` bits | TIMER0–2, RTC, I2C0–1 |
 /// | 32+ | HiSilicon custom `LOCIEN` CSRs | GPIO, SPI, SOFT_INT, COEX, … |
 ///
-/// See the [`chips::ws63`] module for the full IRQ map and memory layout.
+/// See the `chips::ws63` source module for the full IRQ map and memory layout.
 #[cfg(feature = "chip-ws63")]
 #[cfg_attr(doc, doc(cfg(feature = "chip-ws63")))]
 pub use ws63_pac::interrupt;
@@ -329,7 +330,7 @@ pub use rt_core::{entry, pre_init};
 /// |---|---|
 /// | [`entry`] | `#[entry]` attribute — marks `fn main() -> !` |
 /// | [`pre_init`] | `#[pre_init]` attribute — runs before `main` |
-/// | [`Interrupt`](ws63_pac::interrupt::ExternalInterrupt) | All peripheral IRQ numbers |
+/// | `Interrupt` | All peripheral IRQ numbers for the selected chip |
 pub mod prelude {
     pub use crate::{entry, pre_init};
     #[cfg(feature = "chip-bs21")]
