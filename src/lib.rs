@@ -191,6 +191,7 @@
 //! | `chip-bs21` | off | BS2X | BS2X startup adapter (requires `unstable`) |
 //! | `boot-header` | off | WS63 | Embed 0x300-byte HiSilicon image header at `0x230000` |
 //! | `ws63-bgle-32k` | off | WS63 | Use 32 KiB BGLE exchange memory profile (radio images) |
+//! | `ws63-radio-main-stack-32k` | off | WS63 | Select the HIL-verified 32 KiB main-stack envelope for synchronous radio bootstrap |
 //! | `startup-uart-trace` | off | WS63 | Emit 4-char markers (e.g. `RT2!`) on UART0 during startup |
 //! | `riscv-rt-start-experiment` | off | WS63 | Delegate `_start` to `riscv-rt`; inject WS63 hooks (requires `unstable`) |
 //! | `unstable` | off | all | Gate for experimental APIs (no stability guarantee) |
@@ -240,6 +241,9 @@ compile_error!("hisi-riscv-rt `riscv-rt-start-experiment` is currently WS63-only
 
 #[cfg(all(feature = "riscv-rt-start-experiment", not(feature = "unstable")))]
 compile_error!("hisi-riscv-rt `riscv-rt-start-experiment` is experimental; enable `unstable` with it");
+
+#[cfg(all(feature = "ws63-radio-main-stack-32k", not(feature = "chip-ws63")))]
+compile_error!("hisi-riscv-rt `ws63-radio-main-stack-32k` is WS63-only; enable `chip-ws63`");
 
 // ---- Default startup path: custom asm/ws63/startup.S ----
 #[cfg(all(

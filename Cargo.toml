@@ -1,6 +1,6 @@
 [package]
 name = "hisi-riscv-rt"
-version = "0.5.5"
+version = "0.5.6"
 edition = "2024"
 description = "Runtime support for HiSilicon RISC-V chips — entry, startup adapters, interrupt vectors, linker scripts"
 license = "MIT"
@@ -58,5 +58,9 @@ startup-uart-trace = []
 # images built from the ws63-liteos-app blob set need this; non-radio firmware
 # keeps the no-BGLE profile when the feature is absent.
 ws63-bgle-32k = []
+# Select the HIL-verified 32 KiB main-stack envelope required by the current
+# synchronous WS63 radio bootstrap. This changes only the bundled memory.x
+# default; an application-owned memory.x remains authoritative.
+ws63-radio-main-stack-32k = []
 
 [build-dependencies]

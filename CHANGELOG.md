@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.5.6] - 2026-07-26
+
+### Added
+
+- Add the opt-in `ws63-radio-main-stack-32k` bundled-memory profile. It defines
+  the current radio bootstrap's HIL-verified 32 KiB main-stack envelope before
+  `memory.x` is evaluated, while leaving the 8 KiB non-radio default unchanged.
+
 ## [0.5.5] - 2026-07-17
 
 ### Changed
