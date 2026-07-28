@@ -28,7 +28,10 @@ pub unsafe extern "C" fn runtime_init() -> ! {
     // Clear caller-owned NOLOAD arenas while D-cache is still disabled. This
     // makes the one-shot claim state deterministic even when the arena is much
     // larger than the 4 KiB data cache.
-    unsafe { zero_shared_arenas() };
+    #[cfg(feature = "chip-ws63")]
+    unsafe {
+        zero_shared_arenas()
+    };
 
     // Match the vendor runtime: invalidate and enable caches before any
     // application relocation or vendor ROM call.
@@ -327,6 +330,7 @@ unsafe fn zero_bss() {
 }
 
 #[unsafe(link_section = ".text.runtime.init")]
+#[cfg(feature = "chip-ws63")]
 unsafe fn zero_shared_arenas() {
     unsafe extern "C" {
         static mut __hisi_shared_arenas_start__: u32;
