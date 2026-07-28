@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.5.7] - 2026-07-28
+
+### Added
+
+- Added a dedicated caller-owned `.hisi.shared-arena` linker contract. The
+  runtime clears this `NOLOAD` range before enabling D-cache, fixes all WS63
+  main/IRQ/exception/NMI stack addresses below preserved memory, and rejects
+  arena/stack overlap at link time.
+
+### Fixed
+
+- Corrected the bundled `ws63-bgle-32k` memory profile to use the vendor's
+  544 KiB ACPU shared-RAM shape instead of the 576 KiB non-BGLE default.
+  PRESERVE and RADAR origins now follow the selected SRAM length.
+
 ## [0.5.6] - 2026-07-26
 
 ### Added

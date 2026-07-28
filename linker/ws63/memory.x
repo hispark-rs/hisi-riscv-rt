@@ -36,13 +36,16 @@ MEMORY
     PROGRAM  (rx) : ORIGIN = 0x230300, LENGTH = 0x240000
 
     /* Default 576K share-RAM window minus the vendor-owned preserved and
-       radar RX regions at its top. Keep these boundaries aligned with
-       fbb_ws63 memory_config_common.h. */
-    SRAM     (rwx): ORIGIN = 0xA00000, LENGTH = 0x8DF00
+       radar RX regions at its top. The ws63-bgle-32k bundled profile sets
+       __hisi_ws63_app_sram_length to 0x85F00 (544K minus those reserves)
+       before this script is included. */
+    SRAM     (rwx): ORIGIN = 0xA00000,
+                  LENGTH = DEFINED(__hisi_ws63_app_sram_length)
+                         ? __hisi_ws63_app_sram_length : 0x8DF00
 
     /* Preserved boot state followed by the default 8K radar RX reserve. */
-    PRESERVE (rw) : ORIGIN = 0xA8DF00, LENGTH = 0x100
-    RADAR    (rw) : ORIGIN = 0xA8E000, LENGTH = 0x2000
+    PRESERVE (rw) : ORIGIN = ORIGIN(SRAM) + LENGTH(SRAM), LENGTH = 0x100
+    RADAR    (rw) : ORIGIN = ORIGIN(PRESERVE) + LENGTH(PRESERVE), LENGTH = 0x2000
 }
 
 /* Memory regions exported as symbols for runtime relocation */

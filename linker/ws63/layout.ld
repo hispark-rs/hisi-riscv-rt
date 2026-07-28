@@ -297,18 +297,33 @@ SECTIONS
         __ebss = .;
     } > SRAM
 
-    /* ================================================================
-     *  Stack sections (NOLOAD, at high SRAM addresses)
-     * ================================================================ */
+    /*
+     * Caller-owned arenas follow ordinary BSS but cannot move the stacks.
+     * The runtime clears this NOLOAD range before enabling D-cache because
+     * wrappers may contain one-shot claim state.
+     */
+    .hisi_shared_arenas (NOLOAD) : AT(.) {
+        . = ALIGN(64);
+        __hisi_shared_arenas_start__ = .;
+        KEEP(*(.hisi.shared-arena .hisi.shared-arena.*))
+        . = ALIGN(64);
+        __hisi_shared_arenas_end__ = .;
+    } > SRAM
 
-    /* Preserved memory for boot state sharing */
-    .preserve ORIGIN(PRESERVE) (NOLOAD) : AT(ORIGIN(PRESERVE)) {
+    __stack_region_start__ = ORIGIN(PRESERVE)
+        - (__stack_size + __irq_stack_size + __exc_stack_size + __nmi_stack_size);
+
+    /* Legacy linker heap is the gap between explicit arenas and fixed stacks. */
+    .heap (NOLOAD) : AT(.) {
         . = ALIGN(8);
-        KEEP(*(.preserve))
-    } > PRESERVE
+        __heap_start__ = .;
+        PROVIDE(g_intheap_begin = .);
+        __heap_end__ = __stack_region_start__;
+        PROVIDE(g_intheap_size = __heap_end__ - g_intheap_begin);
+    } > SRAM
 
-    /* Stacks grow downward from the preserved region */
-    .stacks (NOLOAD) : AT(.) {
+    /* Stacks have fixed high addresses and grow downward from PRESERVE. */
+    .stacks __stack_region_start__ (NOLOAD) : AT(__stack_region_start__) {
         . = ALIGN(16);
         __stack_start__ = .;
         . = . + __stack_size;          /* User/main stack */
@@ -342,14 +357,20 @@ SECTIONS
         __nmi_stack_top__ = .;
     } > SRAM
 
-    /* Heap uses remaining SRAM */
-    .heap (NOLOAD) : AT(.) {
+    /* Preserved memory for boot state sharing */
+    .preserve ORIGIN(PRESERVE) (NOLOAD) : AT(ORIGIN(PRESERVE)) {
         . = ALIGN(8);
-        __heap_start__ = .;
-        PROVIDE(g_intheap_begin = .);
-        __heap_end__ = ORIGIN(PRESERVE);
-        PROVIDE(g_intheap_size = __heap_end__ - g_intheap_begin);
-    } > SRAM
+        KEEP(*(.preserve))
+    } > PRESERVE
 
     ASSERT(__heap_start__ <= __heap_end__, "WS63 SRAM overflow: no room remains for heap")
+    ASSERT(__hisi_shared_arenas_end__ <= __stack_region_start__,
+           "WS63 SRAM overflow: caller-owned shared arenas overlap fixed stacks")
+    ASSERT((__stack_size & 0xf) == 0
+           && (__irq_stack_size & 0xf) == 0
+           && (__exc_stack_size & 0xf) == 0
+           && (__nmi_stack_size & 0xf) == 0,
+           "WS63 stack sizes must be 16-byte aligned")
+    ASSERT(__nmi_stack_top__ == ORIGIN(PRESERVE),
+           "WS63 fixed stacks must end at the preserved-memory boundary")
 }

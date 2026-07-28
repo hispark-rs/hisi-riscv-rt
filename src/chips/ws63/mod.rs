@@ -76,7 +76,8 @@
 //! 3. `relocate_data()` — copy initialized sections from flash to
 //!    ITCM/DTCM/SRAM. Regions: ROM patch, ROM data, WiFi ROM data,
 //!    TCM text, TCM data, SRAM text, `.data`.
-//! 4. `zero_bss()` — clear ROM BSS, TCM BSS, and SRAM BSS
+//! 4. Clear caller-owned shared arenas before enabling D-cache, then
+//!    `zero_bss()` clears ROM BSS, TCM BSS, and SRAM BSS
 //! 5. `__hisi_ws63_rom_patch_enable()` — enable the ROM patch controller
 //!    (only if the patch table in ITCM is non-empty)
 //! 6. Re-enable machine interrupts (`csrs mie, 0x888` — TIMER0-2, RTC,

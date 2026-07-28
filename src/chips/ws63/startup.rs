@@ -25,6 +25,11 @@ pub unsafe extern "C" fn runtime_init() -> ! {
         super::memory::__hisi_ws63_shared_ram_init()
     };
 
+    // Clear caller-owned NOLOAD arenas while D-cache is still disabled. This
+    // makes the one-shot claim state deterministic even when the arena is much
+    // larger than the 4 KiB data cache.
+    unsafe { zero_shared_arenas() };
+
     // Match the vendor runtime: invalidate and enable caches before any
     // application relocation or vendor ROM call.
     unsafe { super::cache::__hisi_ws63_cache_init() };
@@ -318,5 +323,22 @@ unsafe fn zero_bss() {
             core::ptr::write_bytes(&raw mut __bss_begin__ as *mut u8, 0, count);
         }
         startup_mark4(b'Z', b'B', b'1', b'!');
+    }
+}
+
+#[unsafe(link_section = ".text.runtime.init")]
+unsafe fn zero_shared_arenas() {
+    unsafe extern "C" {
+        static mut __hisi_shared_arenas_start__: u32;
+        static mut __hisi_shared_arenas_end__: u32;
+    }
+
+    unsafe {
+        let begin = &raw const __hisi_shared_arenas_start__ as usize;
+        let end = &raw const __hisi_shared_arenas_end__ as usize;
+        let count = range_len(begin, end);
+        if count > 0 {
+            core::ptr::write_bytes(&raw mut __hisi_shared_arenas_start__ as *mut u8, 0, count);
+        }
     }
 }

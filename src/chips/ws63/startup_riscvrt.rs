@@ -14,6 +14,7 @@
 pub unsafe extern "C" fn runtime_init_riscvrt() {
     unsafe {
         super::memory::__hisi_ws63_shared_ram_init();
+        zero_shared_arenas();
         super::cache::__hisi_ws63_cache_init();
         relocate_data();
         zero_extra_bss();
@@ -88,5 +89,19 @@ unsafe fn zero_extra_bss() {
 
         zero_region!(__rom_bss_begin__, __rom_bss_end__);
         zero_region!(__tcm_bss_begin__, __tcm_bss_end__);
+    }
+}
+
+unsafe fn zero_shared_arenas() {
+    unsafe extern "C" {
+        static mut __hisi_shared_arenas_start__: u32;
+        static mut __hisi_shared_arenas_end__: u32;
+    }
+
+    unsafe {
+        let count = &raw const __hisi_shared_arenas_end__ as usize - &raw const __hisi_shared_arenas_start__ as usize;
+        if count > 0 {
+            core::ptr::write_bytes(&raw mut __hisi_shared_arenas_start__ as *mut u8, 0, count);
+        }
     }
 }
