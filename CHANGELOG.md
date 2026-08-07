@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.5.8] - 2026-08-07
+
+### Fixed
+
+- Restore the WS63 radio ROM-data linker window and keep the shared-arena
+  startup symbols scoped to the WS63 adapter.
+- Keep the radio BSS address assertion conditional so non-radio WS63 firmware
+  remains linkable without vendor radio objects.
+- Export the runtime's default device interrupt dispatcher so a radio-aware
+  override can handle owned IRQ lines and delegate all other lines safely.
+
 ## [0.5.7] - 2026-07-28
 
 ### Added

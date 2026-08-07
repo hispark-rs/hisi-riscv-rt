@@ -53,7 +53,7 @@ SECTIONS
 
     ASSERT(__rom_bss_begin__ == 0x1803e0 && __rom_bss_end__ == 0x182888,
            "WS63 mask-ROM BSS ABI range drifted")
-    ASSERT(g_em_eeq_normal_offset == 0x182702,
+    ASSERT(!DEFINED(g_em_eeq_normal_offset) || g_em_eeq_normal_offset == 0x182702,
            "WS63 BTC ROM-BSS offset drifted")
 
     /* ================================================================
