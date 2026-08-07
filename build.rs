@@ -43,6 +43,7 @@ fn main() {
         Path::new("linker/ws63/layout.ld")
     };
     let ws63_boot_header_x = Path::new("linker/ws63/boot-header.x");
+    let ws63_radio_rom_data_ld = Path::new("linker/ws63/radio-rom-data.ld");
     let bs2x_memory_x = Path::new("linker/bs2x/memory.x");
     let bs2x_layout_ld = Path::new("linker/bs2x/layout.ld");
     let bs2x_boot_header_x = Path::new("linker/bs2x/boot-header.x");
@@ -53,6 +54,7 @@ fn main() {
     println!("cargo:rerun-if-changed={}", ws63_memory_x.display());
     println!("cargo:rerun-if-changed={}", ws63_layout_ld.display());
     println!("cargo:rerun-if-changed={}", ws63_boot_header_x.display());
+    println!("cargo:rerun-if-changed={}", ws63_radio_rom_data_ld.display());
     println!("cargo:rerun-if-changed={}", bs2x_memory_x.display());
     println!("cargo:rerun-if-changed={}", bs2x_layout_ld.display());
     println!("cargo:rerun-if-changed={}", bs2x_boot_header_x.display());
@@ -67,6 +69,7 @@ fn main() {
     let stale_device_out = out_dir.join("device.x");
     let symbols_out = out_dir.join("riscv-rt-symbols.x");
     let boot_header_out = out_dir.join("boot-header.x");
+    let radio_rom_data_out = out_dir.join("radio-rom-data.ld");
 
     let selected_memory_x = if chip_ws63 {
         Some(ws63_memory_x)
@@ -97,6 +100,12 @@ fn main() {
         fs::copy(layout_ld, &layout_out).expect("Failed to copy selected layout.ld");
     } else if layout_out.exists() {
         fs::remove_file(&layout_out).expect("Failed to remove stale layout.ld");
+    }
+
+    if chip_ws63 {
+        fs::copy(ws63_radio_rom_data_ld, &radio_rom_data_out).expect("Failed to copy WS63 radio ROM-data layout");
+    } else if radio_rom_data_out.exists() {
+        fs::remove_file(&radio_rom_data_out).expect("Failed to remove stale WS63 radio ROM-data layout");
     }
 
     // Chip-specific `device.x` files are owned by the active PAC's `rt` feature

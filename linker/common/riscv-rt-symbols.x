@@ -11,6 +11,8 @@ _hart_stack_size = DEFINED(__stack_size) ? __stack_size : 0x2000;
    implementation under a distinct name so a Rust RTOS can define the public
    symbol without colliding with global_asm during LTO. */
 PROVIDE(__hisi_irq_epilogue = __hisi_irq_epilogue_default);
+PROVIDE(local_isr_dispatch = __hisi_local_isr_dispatch_default);
+PROVIDE(__rt_irq_dispatch = __hisi_rt_irq_dispatch_default);
 
 /* Data/bss symbols */
 __sidata = LOADADDR(.data);

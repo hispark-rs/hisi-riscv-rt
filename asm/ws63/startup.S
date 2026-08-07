@@ -808,9 +808,16 @@ mie4_interrupt_handler:
 mie5_interrupt_handler:
     ret
 
-.weak local_isr_dispatch
-local_isr_dispatch:
-    ret
+.global __hisi_local_isr_dispatch_default
+__hisi_local_isr_dispatch_default:
+    # Some vendor radio setup paths select the WS63 local-vectored trap entry
+    # even though the Rust startup normally keeps mtvec in DIRECT mode. Route
+    # both mechanisms through the same device.x interrupt table so a pending
+    # local source cannot strand the hart in an unacknowledged interrupt loop.
+    csrr t0, mcause
+    slli t0, t0, 1              # discard mcause's interrupt flag
+    srli a0, t0, 1              # a0 = IRQ number
+    tail __rt_irq_dispatch
 
 # Default target for the linker-provided __hisi_irq_epilogue alias. Keeping the
 # default under a distinct name avoids global_asm/LTO duplicate-symbol failures
@@ -824,8 +831,8 @@ __hisi_irq_epilogue_default:
 # handler's `ret` returns into `_handle_interrupt`). Out-of-range IRQs return
 # without action. Weak so an application may replace the whole dispatcher if it
 # prefers a single hook over per-IRQ named symbols.
-.weak __rt_irq_dispatch
-__rt_irq_dispatch:
+.global __hisi_rt_irq_dispatch_default
+__hisi_rt_irq_dispatch_default:
 .ifdef __hisi_chip_bs2x
     li   t0, 90                 # BS2X __INTERRUPTS length (IRQ 0..89)
 .else

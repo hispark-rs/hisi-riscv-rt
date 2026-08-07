@@ -423,16 +423,22 @@ mie4_interrupt_handler: ret
 .weak mie5_interrupt_handler
 mie5_interrupt_handler: ret
 
-.weak local_isr_dispatch
-local_isr_dispatch: ret
+.global __hisi_local_isr_dispatch_default
+__hisi_local_isr_dispatch_default:
+    # Keep the local-vectored fallback behavior identical to the default WS63
+    # startup adapter: dispatch the active mcause through device.x.
+    csrr t0, mcause
+    slli t0, t0, 1
+    srli a0, t0, 1
+    tail __rt_irq_dispatch
 
 # Default target for the linker-provided __hisi_irq_epilogue alias. The distinct
 # name lets an RTOS provide the public symbol without an object-level collision.
 .global __hisi_irq_epilogue_default
 __hisi_irq_epilogue_default: ret
 
-.weak __rt_irq_dispatch
-__rt_irq_dispatch:
+.global __hisi_rt_irq_dispatch_default
+__hisi_rt_irq_dispatch_default:
     li   t0, 73
     bgeu a0, t0, 1f
     la   t0, __INTERRUPTS

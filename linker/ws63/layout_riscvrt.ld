@@ -45,12 +45,16 @@ SECTIONS
     .rom_bss 0x1803e0 (NOLOAD) : AT(0x1803e0) {
         __rom_bss_begin__ = .;
         *(.rom_bss .rom_bss.*)
+        . = 0x182702;
+        KEEP(*(.bss.g_em_eeq_normal_offset))
         . = 0x182888;
         __rom_bss_end__ = .;
     } > DTCM
 
     ASSERT(__rom_bss_begin__ == 0x1803e0 && __rom_bss_end__ == 0x182888,
            "WS63 mask-ROM BSS ABI range drifted")
+    ASSERT(g_em_eeq_normal_offset == 0x182702,
+           "WS63 BTC ROM-BSS offset drifted")
 
     /* ================================================================
      *  SRAM sections (Main system RAM at 0xA00000)
@@ -224,22 +228,7 @@ SECTIONS
     .wifi_rom_data (ORIGIN(DTCM) + 0xd8) : ALIGN(1) {
         __wifi_rom_data_load__ = LOADADDR(.wifi_rom_data);
         __wifi_rom_data_begin__ = .;
-        KEEP(*(.data.g_ltf_and_gi))
-        . += 2;
-        KEEP(*(.data.g_11b_per_cnt))
-        KEEP(*(.data.g_dmac_algorithm_main))
-        KEEP(*(.data.g_temp_protect_aggr_max_mpdu))
-        KEEP(*(.data.g_btcoex_aggr_max_mpdu))
-        KEEP(*(.data.g_smooth_phase))
-        KEEP(*(.data.g_rf_switch_cfg))
-        KEEP(*(.data.g_mac_pa_switch))
-        . += 3;
-        KEEP(*(.data.g_hal_cfg_custom))
-        KEEP(*(.data.g_mac_res))
-        KEEP(*(.data.g_buf_size))
-        . += 2;
-        KEEP(*(.data.g_mem_start_addr_cfg))
-        KEEP(*(.data.g_skb_size))
+        INCLUDE radio-rom-data.ld
         __wifi_rom_data_end__ = .;
     } > DTCM AT > PROGRAM
 
@@ -247,6 +236,16 @@ SECTIONS
            "platform ROM data overlaps the WS63 Wi-Fi ROM-data ABI window")
     ASSERT(!DEFINED(g_rf_switch_cfg) || g_rf_switch_cfg == 0x1800eb,
            "WS63 g_rf_switch_cfg address drifted from the mask-ROM ABI")
+    ASSERT(!DEFINED(g_em_comm_txpd_desc_offset) ||
+           g_em_comm_txpd_desc_offset == 0x180288,
+           "WS63 BLE TXPD offset address drifted from the mask-ROM ABI")
+    ASSERT(!DEFINED(g_dts_hci_config) || g_dts_hci_config == 0x18021c,
+           "WS63 BLE HCI config address drifted from the mask-ROM ABI")
+    ASSERT(!DEFINED(g_gle_isr_process_tbl) ||
+           g_gle_isr_process_tbl == 0x180360,
+           "WS63 BLE ISR table drifted from the mask-ROM ABI")
+    ASSERT(SIZEOF(.wifi_rom_data) <= 0x308,
+           "WS63 radio ROM data overlaps the mask-ROM BSS window")
 
     .data : ALIGN(8) {
         __data_load__ = LOADADDR(.data);
