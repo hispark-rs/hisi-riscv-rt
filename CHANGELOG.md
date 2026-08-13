@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.5.9] - 2026-08-13
+
+### Fixed
+
+- Preserve the WS63 `.hisi.sram-text` input sections in the final linker
+  script so flash-programming command routines execute from SRAM while XIP is
+  unavailable.
+
 ## [0.5.8] - 2026-08-07
 
 ### Fixed

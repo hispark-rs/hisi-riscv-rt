@@ -27,7 +27,7 @@ checksum = "361a90feb7004eca4019fb28352a9465666b24f840f5c3cddf0ff13920590b89"
 
 [[package]]
 name = "hisi-riscv-rt"
-version = "0.5.8"
+version = "0.5.9"
 dependencies = [
  "bs2x-pac",
  "critical-section",
