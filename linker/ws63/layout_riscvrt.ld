@@ -166,6 +166,10 @@ SECTIONS
     .text_sram __wifi_pkt_ram_end__ : ALIGN(8) {
         __sram_text_load__ = LOADADDR(.text_sram);
         __sram_text_begin__ = .;
+        /* `.sram_text.*` intentionally does not match the earlier
+           `*(.text .text.*)` XIP wildcard. Use it for code that must continue
+           executing while the external-flash controller is in command mode. */
+        *(.sram_text .sram_text.*)
         *(.text.sram .text.sram.*)
         KEEP(*(.patch.text.on.sram .patch.rodata.on.sram))
         . = ALIGN(4);
