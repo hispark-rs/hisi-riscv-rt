@@ -205,7 +205,9 @@ SECTIONS
 
     /* Define ITCM-loaded sections only after the flash text so their LMAs do
        not collide with the explicit PROGRAM entry at 0x230300. */
-    .rom_ram_cb_text (ORIGIN(ITCM) + 0x928) : ALIGN(8) {
+    /* The mask-ROM callback ABI assigns every veneer an 8-byte slot even
+       when its input section contains a 4-byte tail instruction. */
+    .rom_ram_cb_text (ORIGIN(ITCM) + 0x928) : ALIGN(8) SUBALIGN(8) {
         __tcm_text_load__ = LOADADDR(.rom_ram_cb_text);
         __tcm_text_begin__ = .;
         KEEP(*(.*.romcall.text))

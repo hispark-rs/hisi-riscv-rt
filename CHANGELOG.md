@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.5.10] - 2026-08-13
+
+### Fixed
+
+- Preserve the mask-ROM callback ABI's 8-byte veneer slots under stock
+  rust-lld. Without per-input-section alignment, BLE/SLE final links packed
+  4-byte veneers together and failed the original SDK address assertion.
+
 ## [0.5.9] - 2026-08-13
 
 ### Fixed

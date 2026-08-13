@@ -44,6 +44,12 @@ jobs:
             --no-default-features --features chip-ws63,boot-header -- -D warnings
           cargo +"$TOOLCHAIN" clippy -Zbuild-std=core,alloc --locked --target "$TARGET" \
             --no-default-features --features chip-bs21,unstable -- -D warnings
+      - name: Check WS63 ROM callback slot ABI
+        run: |
+          grep -Fq '.rom_ram_cb_text (ORIGIN(ITCM) + 0x928) : ALIGN(8) SUBALIGN(8)' linker/ws63/layout.ld
+          grep -Fq '.rom_ram_cb_text (ORIGIN(ITCM) + 0x928) : ALIGN(8) SUBALIGN(8)' linker/ws63/layout_riscvrt.ld
+          grep -Fq '__wrap_log_event_wifi_print1 == 0x14ce28' linker/ws63/layout.ld
+          grep -Fq '__wrap_log_event_wifi_print1 == 0x14ce28' linker/ws63/layout_riscvrt.ld
       - name: Link adapter smoke images
         env:
           RUSTFLAGS: -C link-arg=-Thisi-riscv-link.x
