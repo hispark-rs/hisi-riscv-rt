@@ -90,6 +90,28 @@ should provide its own `memory.x`.
 | PROGRAM | 0x10000000 | 1MB | Application code |
 | SRAM | 0x00100000 | 160K | BS21/BS2X L2RAM default |
 
+## Experimental WS53 vendor FlashBoot entry
+
+`chip-ws53,unstable,ws53-flash-start` selects the application Flash entry at
+`0x45d300`, an ITCM bootstrap stack, the source-backed MCU_MODE_1 RAM allocation
+and Flash-to-RAM `.data` copy. Without `ws53-flash-start`, WS53 retains its RAM
+takeover layout. The profiles must not be feature-unified in one Cargo build.
+
+This draft accepts only the observed vendor FlashBoot handoff with the control
+core still held in reset. It preserves its Flash image but does not start it.
+It neither emits a signed/combined image header nor programs Flash. Board-level
+Flash/cold-boot acceptance remains pending; clocks and pads come from the
+qualified vendor FlashBoot, not a debugger. Keep the bootstrap ITCM stack away
+from all remapped banks and do not resume the old FlashBoot context.
+
+The Flash profile installs a stackless early trap vector before vendor CSR
+accesses. Until RAM allocation, stack setup and `.data`/`.bss` initialization
+finish, an exception stops with `mcause`, `mepc` and `mtval` in `t0`, `t1` and
+`t2`; it does not call Rust handlers or use the DTCM exception stack. The
+inherited watchdog may restart the board. Normal handlers are installed just
+before `main`. This protects initialization failures, not arbitrary probing of
+unknown CSRs, and does not qualify hardware NMI delivery or DMA/cache handoff.
+
 ## License
 
 MIT

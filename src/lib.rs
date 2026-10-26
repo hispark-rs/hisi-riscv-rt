@@ -189,6 +189,8 @@
 //! | `bundled-memory-x` | on | all | Emit default `memory.x` via `build.rs` |
 //! | `chip-ws63` | off | WS63 | WS63 startup adapter, `ws63-pac/rt` interrupts |
 //! | `chip-bs21` | off | BS2X | BS2X startup adapter (requires `unstable`) |
+//! | `chip-ws53` | off | WS53 | MCU_MODE_1 RAM takeover adapter (requires `unstable`) |
+//! | `ws53-flash-start` | off | WS53 | Experimental vendor FlashBoot entry, early ITCM stack and mode1 RAM/data initialization |
 //! | `boot-header` | off | WS63 | Embed 0x300-byte HiSilicon image header at `0x230000` |
 //! | `ws63-bgle-32k` | off | WS63 | Use 32 KiB BGLE exchange memory profile (radio images) |
 //! | `ws63-radio-main-stack-32k` | off | WS63 | Select the HIL-verified 32 KiB main-stack envelope for synchronous radio bootstrap |
@@ -197,6 +199,16 @@
 //! | `unstable` | off | all | Gate for experimental APIs (no stability guarantee) |
 //!
 //! # Safety invariants
+//!
+//! WS53 currently supports debugger-loaded RAM images only. Its adapter clears
+//! this image's BSS, initializes stacks/FPU/traps and masks inherited IRQs.
+//! It does not reconfigure shared memory, clocks, caches, pads or the control
+//! core. Verify the vendor boot environment and RAM ownership before takeover;
+//! reset after testing instead of resuming overwritten vendor application state.
+//! WS53 has a dedicated software entry for NMI cause12 with a separate stack.
+//! CPU delivery/redelivery and watchdog handoff remain unverified: this does
+//! not authorize enabling physical NMI sources during RAM takeover. See
+//! `NmiContext` for the experimental `WS53_NMI` hook contract.
 //!
 //! Users of this crate must uphold these contracts:
 //!
@@ -227,6 +239,22 @@
 //!   boot state is shared through it.
 
 #![no_std]
+
+#[cfg(feature = "chip-ws53")]
+core::arch::global_asm!(concat!(
+    ".set __hisi_chip_ws53, 1\n",
+    ".set __hisi_ws53_flash_start, {flash_start}\n",
+    include_str!("../asm/ws63/task_context.S"),
+    include_str!("../asm/ws63/startup.S"),
+    include_str!("../asm/ws53/nmi.S")
+), flash_start = const cfg!(feature = "ws53-flash-start") as u8);
+
+#[cfg(feature = "chip-ws53")]
+pub use chips::ws53::NmiContext;
+
+/// WS53 application-core interrupt enumeration.
+#[cfg(feature = "chip-ws53")]
+pub use ws53_pac::interrupt;
 
 #[cfg(all(feature = "boot-header", not(feature = "chip-ws63")))]
 compile_error!("hisi-riscv-rt `boot-header` is WS63-only; enable `chip-ws63`");
@@ -338,6 +366,8 @@ pub mod prelude {
     #[cfg(feature = "chip-bs21")]
     #[cfg_attr(docsrs, doc(cfg(feature = "chip-bs21")))]
     pub use bs2x_pac::interrupt::ExternalInterrupt as Interrupt;
+    #[cfg(feature = "chip-ws53")]
+    pub use ws53_pac::interrupt::ExternalInterrupt as Interrupt;
     #[cfg(feature = "chip-ws63")]
     #[cfg_attr(docsrs, doc(cfg(feature = "chip-ws63")))]
     pub use ws63_pac::interrupt::ExternalInterrupt as Interrupt;

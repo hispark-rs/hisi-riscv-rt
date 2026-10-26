@@ -7,6 +7,8 @@ fn main() {
 
     let chip_ws63 = env::var_os("CARGO_FEATURE_CHIP_WS63").is_some();
     let chip_bs21 = env::var_os("CARGO_FEATURE_CHIP_BS21").is_some();
+    let chip_ws53 = env::var_os("CARGO_FEATURE_CHIP_WS53").is_some();
+    let ws53_flash_start = env::var_os("CARGO_FEATURE_WS53_FLASH_START").is_some();
     let bundled_memory = env::var_os("CARGO_FEATURE_BUNDLED_MEMORY_X").is_some();
     let boot_header_enabled = env::var_os("CARGO_FEATURE_BOOT_HEADER").is_some();
     let riscv_rt_start_experiment = env::var_os("CARGO_FEATURE_RISCV_RT_START_EXPERIMENT").is_some();
@@ -14,8 +16,14 @@ fn main() {
     let ws63_radio_main_stack_32k = env::var_os("CARGO_FEATURE_WS63_RADIO_MAIN_STACK_32K").is_some();
     let unstable = env::var_os("CARGO_FEATURE_UNSTABLE").is_some();
 
-    if chip_ws63 && chip_bs21 {
-        panic!("hisi-riscv-rt features `chip-ws63` and `chip-bs21` are mutually exclusive");
+    if [chip_ws63, chip_bs21, chip_ws53].into_iter().filter(|v| *v).count() > 1 {
+        panic!("hisi-riscv-rt chip-ws63, chip-bs21 and chip-ws53 are mutually exclusive");
+    }
+    if chip_ws53 && !unstable {
+        panic!("hisi-riscv-rt `chip-ws53` requires `unstable`");
+    }
+    if ws53_flash_start && !chip_ws53 {
+        panic!("hisi-riscv-rt `ws53-flash-start` requires `chip-ws53`");
     }
     if chip_bs21 && !unstable {
         panic!("hisi-riscv-rt `chip-bs21` is experimental; enable `unstable` with it");
@@ -36,6 +44,36 @@ fn main() {
         );
     }
 
+    if (ws63_bgle_32k || env::var_os("CARGO_FEATURE_STARTUP_UART_TRACE").is_some()) && !chip_ws63 {
+        panic!("WS63 memory/trace features require chip-ws63");
+    }
+    if chip_ws53 {
+        if !bundled_memory && out_dir.join("memory.x").exists() {
+            fs::remove_file(out_dir.join("memory.x")).unwrap();
+        }
+        println!("cargo:rustc-env=RISCV_RT_BASE_ISA=rv32i");
+        for name in ["memory.x", "layout.ld"] {
+            let selected = match (ws53_flash_start, name) {
+                (true, "memory.x") => "memory-flash.x",
+                (true, "layout.ld") => "layout-flash.ld",
+                _ => name,
+            };
+            let source = PathBuf::from("linker/ws53").join(selected);
+            println!("cargo:rerun-if-changed={}", source.display());
+            if name != "memory.x" || bundled_memory {
+                fs::copy(&source, out_dir.join(name)).expect("WS53 linker resource");
+            }
+        }
+        fs::write(
+            out_dir.join("hisi-riscv-link.x"),
+            "INCLUDE memory.x\nINCLUDE layout.ld\nINCLUDE device.x\nINCLUDE riscv-rt-symbols.x\n",
+        )
+        .unwrap();
+        fs::copy("linker/common/riscv-rt-symbols.x", out_dir.join("riscv-rt-symbols.x")).unwrap();
+        println!("cargo:rerun-if-changed=linker/common/riscv-rt-symbols.x");
+        println!("cargo:rustc-link-search={}", out_dir.display());
+        return;
+    }
     let ws63_memory_x = Path::new("linker/ws63/memory.x");
     let ws63_layout_ld = if riscv_rt_start_experiment {
         Path::new("linker/ws63/layout_riscvrt.ld")

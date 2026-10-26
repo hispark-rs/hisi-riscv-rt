@@ -12,5 +12,7 @@
 #[cfg(feature = "chip-bs21")]
 pub(crate) mod bs2x;
 pub(crate) mod hi3322;
+#[cfg(feature = "chip-ws53")]
+pub(crate) mod ws53;
 #[cfg(any(feature = "chip-ws63", feature = "chip-bs21"))]
 pub(crate) mod ws63;
