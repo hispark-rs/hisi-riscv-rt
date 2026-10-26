@@ -217,8 +217,9 @@
 //!
 //! - **`mscratch` exclusivity**: do not read or write `mscratch` in any
 //!   application, HAL, or RTOS code.
-//! - **Weak-symbol signature**: handlers must be `extern "C" fn()` with no
-//!   arguments and no return value. Mismatched signatures cause UB.
+//! - **Named legacy/IRQ hooks**: use `extern "C" fn()` with no arguments and
+//!   no return value. WS53's typed `WS53_EXCEPTION` / `WS53_NMI` hooks instead
+//!   follow their documented context signatures. Mismatched signatures cause UB.
 //! - **No duplicate weak symbols**: if two translation units define the same
 //!   handler name, the linker silently picks one — there is no error.
 //! - **Stack sizing**: ensure each stack is large enough for its worst-case
@@ -249,11 +250,16 @@ core::arch::global_asm!(concat!(
     ".set __hisi_ws53_flash_start, {flash_start}\n",
     include_str!("../asm/ws63/task_context.S"),
     include_str!("../asm/ws63/startup.S"),
+    include_str!("../asm/ws53/exception.S"),
     include_str!("../asm/ws53/nmi.S")
 ), flash_start = const cfg!(feature = "ws53-flash-start") as u8);
 
 #[cfg(feature = "chip-ws53")]
 pub use chips::ws53::NmiContext;
+
+/// Experimental WS53 synchronous-exception context and resume contract.
+#[cfg(feature = "chip-ws53")]
+pub use chips::ws53::exception::ExceptionContext;
 
 /// Explicit experimental WS53 instruction-cache configuration (not called by startup).
 #[cfg(feature = "chip-ws53")]

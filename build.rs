@@ -52,7 +52,7 @@ fn main() {
             fs::remove_file(out_dir.join("memory.x")).unwrap();
         }
         println!("cargo:rustc-env=RISCV_RT_BASE_ISA=rv32i");
-        for name in ["memory.x", "layout.ld"] {
+        for name in ["memory.x", "layout.ld", "exceptions.x"] {
             let selected = match (ws53_flash_start, name) {
                 (true, "memory.x") => "memory-flash.x",
                 (true, "layout.ld") => "layout-flash.ld",
@@ -66,7 +66,7 @@ fn main() {
         }
         fs::write(
             out_dir.join("hisi-riscv-link.x"),
-            "INCLUDE memory.x\nINCLUDE layout.ld\nINCLUDE device.x\nINCLUDE riscv-rt-symbols.x\n",
+            "INCLUDE memory.x\nINCLUDE layout.ld\nINCLUDE exceptions.x\nINCLUDE device.x\nINCLUDE riscv-rt-symbols.x\n",
         )
         .unwrap();
         fs::copy("linker/common/riscv-rt-symbols.x", out_dir.join("riscv-rt-symbols.x")).unwrap();

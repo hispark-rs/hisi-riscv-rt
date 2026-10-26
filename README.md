@@ -122,6 +122,12 @@ not yet been enabled on hardware by this port. It does not configure data
 cache/PMP or establish DMA coherence. See the [contract and offline SDK/compiled
 instruction checks](docs/ws53-instruction-cache.md).
 
+WS53 synchronous exceptions use an experimental typed `WS53_EXCEPTION` hook,
+preserve the interrupted IRQ's `mscratch`, and restore integer/FPU state.
+Zero-argument `do_*` defaults use linker aliases so Rust LTO overrides can link.
+See the [exception frame, resume and stack contract](docs/ws53-exceptions.md).
+Model tests do not establish physical fault delivery or bad-stack recovery.
+
 ## License
 
 MIT

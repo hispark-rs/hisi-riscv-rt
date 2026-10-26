@@ -620,6 +620,10 @@ trap_entry:
     bltz t0, .Ldirect_interrupt_entry
     lw   t0, 0(sp)
     addi sp, sp, 4
+.ifdef __hisi_chip_ws53
+    # WS53 preserves the interrupted mscratch/FS and uses a typed frame.
+    j __ws53_exception_entry
+.else
     save_all
     startup_uart_mark 84, 82, 80, 33
 
@@ -662,6 +666,7 @@ trap_entry:
 
     restore_all
     mret
+.endif
 
 .Ldirect_interrupt_entry:
 .ifdef __hisi_chip_ws53
@@ -685,12 +690,14 @@ trap_entry:
 .endif
 
 # ECALL from M-mode: advance mepc by 4, then jump to handler
+.ifndef __hisi_chip_ws53
 handle_ecall_m:
     addi s0, s0, 4
     sw   s0, 0*4(sp)
     csrr a0, mscratch
     call do_ecall_m
     j 2b
+.endif
 
 # ---- Interrupt path (DIRECT mode): dispatch by mcause IRQ number ----
 # Reached from trap_entry when mcause bit 31 is set. The unified task context is
@@ -862,10 +869,18 @@ default_handler:
     startup_uart_mark 68, 70, 72, 33
     j .
 
+.ifdef __hisi_chip_ws53
+# Linker PROVIDE aliases permit Rust overrides in the same LTO unit. A weak
+# assembly definition of the public name conflicts with Rust's global symbol.
+.global __ws53_default_exc_halt
+__ws53_default_exc_halt:
+    j __ws53_default_exc_halt
+.else
 .weak default_exc_handler
 default_exc_handler:
     startup_uart_mark 68, 69, 72, 33
     j .
+.endif
 
 .weak nmi_handler
 nmi_handler:
@@ -938,6 +953,7 @@ __hisi_rt_irq_dispatch_default:
 1:
     ret
 
+.ifndef __hisi_chip_ws53
 .weak do_insn_misaligned
 do_insn_misaligned:
     j default_exc_handler
@@ -993,6 +1009,7 @@ do_load_page_fault:
 .weak do_store_page_fault
 do_store_page_fault:
     j default_exc_handler
+.endif
 
 
 # ======================================================================
