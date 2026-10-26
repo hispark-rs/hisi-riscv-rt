@@ -252,6 +252,10 @@ core::arch::global_asm!(concat!(
 #[cfg(feature = "chip-ws53")]
 pub use chips::ws53::NmiContext;
 
+/// Explicit experimental WS53 instruction-cache configuration (not called by startup).
+#[cfg(feature = "chip-ws53")]
+pub use chips::ws53::cache as ws53_cache;
+
 /// WS53 application-core interrupt enumeration.
 #[cfg(feature = "chip-ws53")]
 pub use ws53_pac::interrupt;

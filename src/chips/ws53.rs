@@ -5,6 +5,8 @@
 //! Clocks/pads are inherited until a HAL driver owns and configures them.
 //! The debugger MUST clear `mstatus.MIE` while halted before loading/resuming:
 //! setting PC is not reset, and an inherited IRQ can preempt the first instruction.
+pub mod cache;
+
 use ws53_pac::interrupt::ExternalInterrupt as Irq;
 
 /// Immutable entry snapshot for the experimental WS53 `WS53_NMI` hook.

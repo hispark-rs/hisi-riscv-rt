@@ -100,8 +100,11 @@ takeover layout. The profiles must not be feature-unified in one Cargo build.
 This draft accepts only the observed vendor FlashBoot handoff with the control
 core still held in reset. It preserves its Flash image but does not start it.
 It neither emits a signed/combined image header nor programs Flash. Board-level
-Flash/cold-boot acceptance remains pending; clocks and pads come from the
-qualified vendor FlashBoot, not a debugger. Keep the bootstrap ITCM stack away
+Flash programming/readback, autonomous execution and nRESET have passed named
+integration HIL fixtures; power-off cold boot remains unqualified. Clocks and
+pads come from the qualified vendor FlashBoot, not a debugger. These results
+apply to that observed handoff, not arbitrary vendor images or board profiles.
+Keep the bootstrap ITCM stack away
 from all remapped banks and do not resume the old FlashBoot context.
 
 The Flash profile installs a stackless early trap vector before vendor CSR
@@ -111,6 +114,13 @@ finish, an exception stops with `mcause`, `mepc` and `mtval` in `t0`, `t1` and
 inherited watchdog may restart the board. Normal handlers are installed just
 before `main`. This protects initialization failures, not arbitrary probing of
 unknown CSRs, and does not qualify hardware NMI delivery or DMA/cache handoff.
+
+`ws53_cache` adds an explicit experimental instruction-cache configuration
+operation. It is never called by default startup, requires a complete RAM
+execution closure and an externally established maintenance contract, and has
+not yet been enabled on hardware by this port. It does not configure data
+cache/PMP or establish DMA coherence. See the [contract and offline SDK/compiled
+instruction checks](docs/ws53-instruction-cache.md).
 
 ## License
 
