@@ -40,4 +40,10 @@ post-trap状态，不能直接称为中断前状态；FS为Off/Clean也不丢弃
 
 `examples/ws53/exception_context`在模型中执行真实16/32位非法指令、ECALL及同步
 嵌套，并另测在TIMER0 IRQ中发生同步异常后恢复IRQ/主程序的路径。
-这不是软件改写mcause伪造的异常进入；仍须另行完成实板RAM/Flash及NMI相关验收。
+这不是软件改写mcause伪造的异常进入。2026-10-27另在A板完成受控RAM验证：typed
+一次、IRQ一次及连续20轮，每轮25次异常返回、IRQ版本27次hook进入，128状态字
+均与同ELF模型一致，逐轮物理复位恢复原厂AT；前/系列/后各600次SWD读取和CPU
+调试检查通过。记录位于集成仓库`docs/plan/evidence/ws53-exceptions-ram-2026-10-27`。
+控制核保持复位、WDT/trace停止；SDMA门控/共享master排空仍未证明，不是生产交接。
+未驱动IO或取得外部波形，不据此证明精确定时。Flash、冷启动、物理NMI、坏栈及
+保存帧期间重入仍须另行验收；实验API门控保持不变。
