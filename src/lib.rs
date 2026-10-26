@@ -200,10 +200,13 @@
 //!
 //! # Safety invariants
 //!
-//! WS53 currently supports debugger-loaded RAM images only. Its adapter clears
-//! this image's BSS, initializes stacks/FPU/traps and masks inherited IRQs.
-//! It does not reconfigure shared memory, clocks, caches, pads or the control
-//! core. Verify the vendor boot environment and RAM ownership before takeover;
+//! WS53 has a default debugger-loaded RAM profile and an experimental opt-in
+//! vendor FlashBoot profile (`ws53-flash-start`). Both initialize image memory,
+//! stacks/FPU/traps and mask inherited IRQs. RAM takeover inherits shared memory
+//! ownership; the Flash profile establishes MCU_MODE_1 banks from its qualified
+//! handoff with the control core held reset. Default startup does not configure
+//! caches. Explicit `ws53_cache` operations require their separate RAM execution
+//! and ownership contracts. Verify the vendor environment and memory ownership;
 //! reset after testing instead of resuming overwritten vendor application state.
 //! WS53 has a dedicated software entry for NMI cause12 with a separate stack.
 //! CPU delivery/redelivery and watchdog handoff remain unverified: this does
