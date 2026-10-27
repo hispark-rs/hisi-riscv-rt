@@ -128,6 +128,11 @@ Zero-argument `do_*` defaults use linker aliases so Rust LTO overrides can link.
 See the [exception frame, resume and stack contract](docs/ws53-exceptions.md).
 Model tests do not establish physical fault delivery or bad-stack recovery.
 
+`ws53-ram-functions` additionally copies explicitly annotated functions and
+constants into dedicated application ITCM before `main`, keeping the bootstrap
+stack separate. It requires the experimental Flash profile and does not establish
+a safe Flash-controller handoff. See the [placement and ELF audit contract](docs/ws53-ram-functions.md).
+
 ## License
 
 MIT

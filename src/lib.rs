@@ -191,6 +191,7 @@
 //! | `chip-bs21` | off | BS2X | BS2X startup adapter (requires `unstable`) |
 //! | `chip-ws53` | off | WS53 | MCU_MODE_1 RAM takeover adapter (requires `unstable`) |
 //! | `ws53-flash-start` | off | WS53 | Experimental vendor FlashBoot entry, early ITCM stack and mode1 RAM/data initialization |
+//! | `ws53-ram-functions` | off | WS53 | Opt-in Flash-to-ITCM function/constant copy; requires the experimental Flash entry |
 //! | `boot-header` | off | WS63 | Embed 0x300-byte HiSilicon image header at `0x230000` |
 //! | `ws63-bgle-32k` | off | WS63 | Use 32 KiB BGLE exchange memory profile (radio images) |
 //! | `ws63-radio-main-stack-32k` | off | WS63 | Select the HIL-verified 32 KiB main-stack envelope for synchronous radio bootstrap |

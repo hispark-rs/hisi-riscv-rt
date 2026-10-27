@@ -117,6 +117,12 @@ unsafe extern "C" {
     static mut __data_begin__: u8;
     #[cfg(feature = "ws53-flash-start")]
     static mut __data_end__: u8;
+    #[cfg(feature = "ws53-ram-functions")]
+    static __ws53_ramtext_load: u8;
+    #[cfg(feature = "ws53-ram-functions")]
+    static mut __ws53_ramtext_begin: u8;
+    #[cfg(feature = "ws53-ram-functions")]
+    static mut __ws53_ramtext_end: u8;
 }
 
 /// Fail before touching application data/stack. The inherited vendor watchdog
@@ -226,6 +232,22 @@ unsafe extern "C" fn runtime_init() -> ! {
         unsafe {
             cursor.write_volatile(0);
             cursor = cursor.add(1);
+        }
+    }
+    #[cfg(feature = "ws53-ram-functions")]
+    {
+        // Dedicated application ITCM, never the bootstrap stack. The early
+        // stackless trap remains active until copy and fence.i both finish.
+        // Volatile byte copies avoid a compiler-generated memcpy dependency.
+        let mut source = core::ptr::addr_of!(__ws53_ramtext_load);
+        let mut dest = core::ptr::addr_of_mut!(__ws53_ramtext_begin);
+        let end = core::ptr::addr_of_mut!(__ws53_ramtext_end);
+        while dest < end {
+            unsafe {
+                dest.write_volatile(source.read_volatile());
+                dest = dest.add(1);
+                source = source.add(1);
+            }
         }
     }
     // Disable inherited application-core local IRQ enables. Do not touch the

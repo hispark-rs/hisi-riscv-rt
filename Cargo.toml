@@ -41,6 +41,9 @@ chip-ws53 = ["dep:ws53-pac", "ws53-pac/rt"]
 # Includes early RAM allocation and Flash-to-RAM data copy, not an image header
 # or a flash writer. Requires chip-ws53 + unstable; RAM takeover stays default.
 ws53-flash-start = []
+# Copy explicitly annotated application functions/constants to private ITCM
+# before main. Flash profile only; this is not a Flash-controller handoff.
+ws53-ram-functions = []
 unstable = []
 # boot-header (default OFF): bake the 0x300-byte WS63 HiSilicon image header into
 # the ELF at flash 0x230000, immediately before .startup at 0x230300, so the bare
