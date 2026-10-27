@@ -136,3 +136,8 @@ a safe Flash-controller handoff. See the [placement and ELF audit contract](docs
 ## License
 
 MIT
+
+WS53 [IRQ completeness](docs/ws53-ipc.md) now covers all24 PAC-declared named
+handlers, including IPC26/27 and shared security59/61. The optional checker can
+inspect the actual linked table; it is not part of ordinary Cargo compilation
+and does not qualify peripheral/peer ownership or silicon interrupt delivery.

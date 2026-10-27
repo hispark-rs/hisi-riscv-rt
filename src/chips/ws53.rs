@@ -89,6 +89,8 @@ unsafe extern "C" {
     #[cfg(feature = "ws53-flash-start")]
     fn trap_vector();
     fn DefaultHandler();
+    fn APP_INT0();
+    fn APP_INT1();
     fn SGPIO_INT();
     fn GPIO_0();
     fn GPIO_1();
@@ -102,6 +104,8 @@ unsafe extern "C" {
     fn TIMER_0();
     fn TIMER_1();
     fn M_DMA();
+    fn SEC_INT1();
+    fn SEC_INT3();
     fn I2C_0();
     fn I2C_1();
     fn SPI_3();
@@ -179,6 +183,8 @@ unsafe extern "C" fn __hisi_ws53_prepare_flash_ram() {
 type Handler = unsafe extern "C" fn();
 const fn handlers() -> [Handler; 90] {
     let mut table = [DefaultHandler as Handler; 90];
+    table[Irq::APP_INT0 as usize] = APP_INT0;
+    table[Irq::APP_INT1 as usize] = APP_INT1;
     table[Irq::SGPIO_INT as usize] = SGPIO_INT;
     table[Irq::GPIO_0 as usize] = GPIO_0;
     table[Irq::GPIO_1 as usize] = GPIO_1;
@@ -192,6 +198,8 @@ const fn handlers() -> [Handler; 90] {
     table[Irq::TIMER_0 as usize] = TIMER_0;
     table[Irq::TIMER_1 as usize] = TIMER_1;
     table[Irq::M_DMA as usize] = M_DMA;
+    table[Irq::SEC_INT1 as usize] = SEC_INT1;
+    table[Irq::SEC_INT3 as usize] = SEC_INT3;
     table[Irq::I2C_0 as usize] = I2C_0;
     table[Irq::I2C_1 as usize] = I2C_1;
     table[Irq::SPI_3 as usize] = SPI_3;
