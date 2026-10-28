@@ -12,6 +12,7 @@ remain an unsafe caller contract; passing this is not Flash-write approval.
 """
 import argparse
 import hashlib
+import io
 import json
 from pathlib import Path
 from elftools.elf.elffile import ELFFile
@@ -35,7 +36,13 @@ def signed(value, bits):
 
 
 def validate(path):
-    with Path(path).open('rb') as stream:
+    return validate_bytes(Path(path).read_bytes())
+
+
+def validate_bytes(image):
+    """Audit and hash one immutable ELF image supplied by the caller."""
+    image = bytes(image)
+    with io.BytesIO(image) as stream:
         elf = ELFFile(stream)
         require(elf.elfclass == 32 and elf.little_endian and elf['e_machine'] == 'EM_RISCV'
             and elf['e_type'] == 'ET_EXEC' and elf['e_flags'] == 3, 'RV32 ilp32f executable required')
@@ -124,7 +131,7 @@ def validate(path):
                         require(inside(region, cursor+signed(imm, 9)), 'compressed branch leaves RAM')
                 instructions += 1
                 cursor += width
-        return dict(passed=True, elf_sha256=hashlib.sha256(Path(path).read_bytes()).hexdigest(),
+        return dict(passed=True, elf_sha256=hashlib.sha256(image).hexdigest(),
             begin=begin, end=begin+size, load=source, size=size, instructions=instructions,
             functions={s.name:dict(address=s['st_value'], size=s['st_size']) for s in functions},
             relocations=records, symbols=symbols, hardware_verified=False,
