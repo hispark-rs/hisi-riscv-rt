@@ -56,6 +56,9 @@ def validate_bytes(image):
         segments = [s for s in elf.iter_segments() if s['p_type'] == 'PT_LOAD'
             and s['p_vaddr'] == begin and s['p_filesz'] == s['p_memsz'] == size and s['p_flags'] == 5]
         require(len(segments) == 1 and inside(FLASH, segments[0]['p_paddr'], size), 'RAM copy must have a Flash LMA')
+        require(section['sh_offset'] == segments[0]['p_offset'] and
+            segments[0]['p_offset'] + size <= len(image),
+            'RAM section does not match file-backed load segment')
         source = segments[0]['p_paddr']
         table = elf.get_section_by_name('.symtab')
         require(table is not None, 'unstripped symbols required')
