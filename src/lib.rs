@@ -189,6 +189,9 @@
 //! | `bundled-memory-x` | on | all | Emit default `memory.x` via `build.rs` |
 //! | `chip-ws63` | off | WS63 | WS63 startup adapter, `ws63-pac/rt` interrupts |
 //! | `chip-bs21` | off | BS2X | BS2X startup adapter (requires `unstable`) |
+//! | `chip-ws53` | off | WS53 | MCU_MODE_1 RAM takeover adapter (requires `unstable`) |
+//! | `ws53-flash-start` | off | WS53 | Experimental vendor FlashBoot entry, early ITCM stack and mode1 RAM/data initialization |
+//! | `ws53-ram-functions` | off | WS53 | Opt-in Flash-to-ITCM function/constant copy; requires the experimental Flash entry |
 //! | `boot-header` | off | WS63 | Embed 0x300-byte HiSilicon image header at `0x230000` |
 //! | `ws63-bgle-32k` | off | WS63 | Use 32 KiB BGLE exchange memory profile (radio images) |
 //! | `ws63-radio-main-stack-32k` | off | WS63 | Select the HIL-verified 32 KiB main-stack envelope for synchronous radio bootstrap |
@@ -198,12 +201,26 @@
 //!
 //! # Safety invariants
 //!
+//! WS53 has a default debugger-loaded RAM profile and an experimental opt-in
+//! vendor FlashBoot profile (`ws53-flash-start`). Both initialize image memory,
+//! stacks/FPU/traps and mask inherited IRQs. RAM takeover inherits shared memory
+//! ownership; the Flash profile establishes MCU_MODE_1 banks from its qualified
+//! handoff with the control core held reset. Default startup does not configure
+//! caches. Explicit `ws53_cache` operations require their separate RAM execution
+//! and ownership contracts. Verify the vendor environment and memory ownership;
+//! reset after testing instead of resuming overwritten vendor application state.
+//! WS53 has a dedicated software entry for NMI cause12 with a separate stack.
+//! CPU delivery/redelivery and watchdog handoff remain unverified: this does
+//! not authorize enabling physical NMI sources during RAM takeover. See
+//! `NmiContext` for the experimental `WS53_NMI` hook contract.
+//!
 //! Users of this crate must uphold these contracts:
 //!
 //! - **`mscratch` exclusivity**: do not read or write `mscratch` in any
 //!   application, HAL, or RTOS code.
-//! - **Weak-symbol signature**: handlers must be `extern "C" fn()` with no
-//!   arguments and no return value. Mismatched signatures cause UB.
+//! - **Named legacy/IRQ hooks**: use `extern "C" fn()` with no arguments and
+//!   no return value. WS53's typed `WS53_EXCEPTION` / `WS53_NMI` hooks instead
+//!   follow their documented context signatures. Mismatched signatures cause UB.
 //! - **No duplicate weak symbols**: if two translation units define the same
 //!   handler name, the linker silently picks one — there is no error.
 //! - **Stack sizing**: ensure each stack is large enough for its worst-case
@@ -227,6 +244,31 @@
 //!   boot state is shared through it.
 
 #![no_std]
+
+#[cfg(feature = "chip-ws53")]
+core::arch::global_asm!(concat!(
+    ".set __hisi_chip_ws53, 1\n",
+    ".set __hisi_ws53_flash_start, {flash_start}\n",
+    include_str!("../asm/ws63/task_context.S"),
+    include_str!("../asm/ws63/startup.S"),
+    include_str!("../asm/ws53/exception.S"),
+    include_str!("../asm/ws53/nmi.S")
+), flash_start = const cfg!(feature = "ws53-flash-start") as u8);
+
+#[cfg(feature = "chip-ws53")]
+pub use chips::ws53::NmiContext;
+
+/// Experimental WS53 synchronous-exception context and resume contract.
+#[cfg(feature = "chip-ws53")]
+pub use chips::ws53::exception::ExceptionContext;
+
+/// Explicit experimental WS53 instruction-cache configuration (not called by startup).
+#[cfg(feature = "chip-ws53")]
+pub use chips::ws53::cache as ws53_cache;
+
+/// WS53 application-core interrupt enumeration.
+#[cfg(feature = "chip-ws53")]
+pub use ws53_pac::interrupt;
 
 #[cfg(all(feature = "boot-header", not(feature = "chip-ws63")))]
 compile_error!("hisi-riscv-rt `boot-header` is WS63-only; enable `chip-ws63`");
@@ -338,6 +380,8 @@ pub mod prelude {
     #[cfg(feature = "chip-bs21")]
     #[cfg_attr(docsrs, doc(cfg(feature = "chip-bs21")))]
     pub use bs2x_pac::interrupt::ExternalInterrupt as Interrupt;
+    #[cfg(feature = "chip-ws53")]
+    pub use ws53_pac::interrupt::ExternalInterrupt as Interrupt;
     #[cfg(feature = "chip-ws63")]
     #[cfg_attr(docsrs, doc(cfg(feature = "chip-ws63")))]
     pub use ws63_pac::interrupt::ExternalInterrupt as Interrupt;

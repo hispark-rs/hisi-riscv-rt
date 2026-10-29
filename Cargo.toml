@@ -22,6 +22,7 @@ riscv-rt = "0.14"
 # development.
 ws63-pac = { version = "0.4", optional = true }
 bs2x-pac = { version = "0.1", optional = true }
+ws53-pac = { version = "0.1.0-alpha.1", optional = true }
 critical-section = "1"
 
 [features]
@@ -35,6 +36,14 @@ default = ["bundled-memory-x"]
 bundled-memory-x = []
 chip-ws63 = ["dep:ws63-pac", "ws63-pac/rt"]
 chip-bs21 = ["dep:bs2x-pac", "bs2x-pac/rt"]
+chip-ws53 = ["dep:ws53-pac", "ws53-pac/rt"]
+# Experimental MCU_MODE_1 entry from the qualified vendor WS53 FlashBoot.
+# Includes early RAM allocation and Flash-to-RAM data copy, not an image header
+# or a flash writer. Requires chip-ws53 + unstable; RAM takeover stays default.
+ws53-flash-start = []
+# Copy explicitly annotated application functions/constants to private ITCM
+# before main. Flash profile only; this is not a Flash-controller handoff.
+ws53-ram-functions = []
 unstable = []
 # boot-header (default OFF): bake the 0x300-byte WS63 HiSilicon image header into
 # the ELF at flash 0x230000, immediately before .startup at 0x230300, so the bare

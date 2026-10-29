@@ -22,6 +22,9 @@
 .ifndef __hisi_startup_uart_trace
 .set __hisi_startup_uart_trace, 0
 .endif
+.ifndef __hisi_ws53_flash_start
+.set __hisi_ws53_flash_start, 0
+.endif
 
 .macro startup_uart_putc ch
 .if __hisi_startup_uart_trace
@@ -60,6 +63,24 @@ reset_vector:
     j HandleReset
 
 HandleReset:
+.ifdef __hisi_chip_ws53
+    # A debugger takeover may inherit enabled vendor interrupts. Mask before
+    # changing mtvec or any stack/context state.
+    csrci mstatus, 8
+.if __hisi_ws53_flash_start
+    # DTCM, SP and GP are not ready. Install a stackless failure path before
+    # touching vendor CSRs; keep it until runtime_init has initialized RAM.
+    .option push
+    .option norelax
+    la    t0, __hisi_ws53_early_trap_vector
+    .option pop
+    csrw  mtvec, t0
+.endif
+    csrwi mie, 0
+    csrw 0xbe0, zero
+    csrw 0xbe1, zero
+    csrw 0xbe2, zero
+.endif
     # ---- PMP is intentionally left untouched on real WS63 silicon -----
     # The vendor startup only clears pmpcfg* in the CHIP_EDA simulation path.
     # On real app boot, writing pmpcfg0 here traps before mtvec is installed.
@@ -72,8 +93,10 @@ HandleReset:
     # `trap_vector` (entry 0 = `j trap_entry`), and trap_entry branches on mcause's
     # interrupt bit to dispatch interrupts by number to named device.x handlers
     # (`__rt_irq_dispatch`) — the path the async/embassy examples prove works.
+.if !__hisi_ws53_flash_start
     la    t0, trap_vector
     csrw  mtvec, t0
+.endif
 
     # ---- Disable interrupts during init ----
     csrwi mstatus, 0
@@ -89,6 +112,15 @@ HandleReset:
     .option norelax
     la    gp, _gp_
     .option pop
+
+.ifdef __hisi_chip_ws53
+.if __hisi_ws53_flash_start
+    # Use the ITCM banks that remain ITCM across the FlashBoot -> MCU_MODE_1
+    # allocation. No application DTCM/stack/data access before the PAC helper.
+    la    sp, __bootstrap_stack_top__
+    call  __hisi_ws53_prepare_flash_ram
+.endif
+.endif
 
     # ---- Initialize stack pointer ----
     la    sp, __stack_top__
@@ -108,6 +140,36 @@ end_stack_fill:
     # ---- Jump to Rust runtime init ----
     tail  runtime_init
 
+.if __hisi_ws53_flash_start
+# No stack, globals, MMIO, FPU or handler calls before RAM is ready. The
+# inherited watchdog may restart the board; a debugger can inspect t0/t1/t2
+# (mcause/mepc/mtval). This deliberately cannot recover an unknown exception.
+# Mirror the ordinary table's slots so a +12 NMI-slot entry also fails closed.
+# Hardware NMI delivery before/during this entry is still unqualified.
+.section .trap.ws53_early, "ax"
+.balign 256
+.global __hisi_ws53_early_trap_vector
+.type __hisi_ws53_early_trap_vector, @function
+__hisi_ws53_early_trap_vector:
+.option push
+.option norvc
+.rept 92
+    j __hisi_ws53_early_trap
+.endr
+.size __hisi_ws53_early_trap_vector, . - __hisi_ws53_early_trap_vector
+.global __hisi_ws53_early_trap
+.type __hisi_ws53_early_trap, @function
+__hisi_ws53_early_trap:
+    csrr t0, mcause
+    csrr t1, mepc
+    csrr t2, mtval
+.global __hisi_ws53_early_trap_stopped
+__hisi_ws53_early_trap_stopped:
+    j __hisi_ws53_early_trap_stopped
+.size __hisi_ws53_early_trap, . - __hisi_ws53_early_trap
+.option pop
+.endif
+
 
 # ======================================================================
 #  Trap vector table
@@ -119,7 +181,11 @@ end_stack_fill:
 # ======================================================================
 
 .section .trap, "ax"
-.align 6   # 256-byte aligned (RV32 vectored mode requirement)
+.if __hisi_ws53_flash_start
+.balign 256  # May follow the separate early table in the linked .trap section.
+.else
+.align 6   # Legacy WS63/RAM layout; the linker supplies section alignment.
+.endif
 
 .global trap_vector
 trap_vector:
@@ -197,6 +263,7 @@ excp_vect_table_end:
 # ======================================================================
 .section .rodata
 .align 4
+.ifndef __hisi_chip_ws53
 .global __INTERRUPTS
 __INTERRUPTS:
 .ifdef __hisi_chip_bs2x
@@ -367,6 +434,7 @@ __INTERRUPTS:
 .endif
 __INTERRUPTS_end:
 .set __INTERRUPTS_len, (__INTERRUPTS_end - __INTERRUPTS) / 4
+.endif # !__hisi_chip_ws53; WS53 owns its PAC-indexed Rust table
 
 
 # ======================================================================
@@ -552,6 +620,10 @@ trap_entry:
     bltz t0, .Ldirect_interrupt_entry
     lw   t0, 0(sp)
     addi sp, sp, 4
+.ifdef __hisi_chip_ws53
+    # WS53 preserves the interrupted mscratch/FS and uses a typed frame.
+    j __ws53_exception_entry
+.else
     save_all
     startup_uart_mark 84, 82, 80, 33
 
@@ -594,20 +666,38 @@ trap_entry:
 
     restore_all
     mret
+.endif
 
 .Ldirect_interrupt_entry:
+.ifdef __hisi_chip_ws53
+    # SDK libriscv.a TrapVector distinguishes NMI cause12 from ordinary IRQs.
+    # t0 is still saved by trap_entry; no interrupted register is lost here.
+    slli t0, t0, 1
+    srli t0, t0, 1
+    addi t0, t0, -12
+    beqz t0, .Lws53_direct_nmi
+.endif
     lw   t0, 0(sp)
     addi sp, sp, 4
     hisi_push_task_context
     j _handle_interrupt
 
+.ifdef __hisi_chip_ws53
+.Lws53_direct_nmi:
+    lw t0, 0(sp)
+    addi sp, sp, 4
+    j __ws53_nmi_entry
+.endif
+
 # ECALL from M-mode: advance mepc by 4, then jump to handler
+.ifndef __hisi_chip_ws53
 handle_ecall_m:
     addi s0, s0, 4
     sw   s0, 0*4(sp)
     csrr a0, mscratch
     call do_ecall_m
     j 2b
+.endif
 
 # ---- Interrupt path (DIRECT mode): dispatch by mcause IRQ number ----
 # Reached from trap_entry when mcause bit 31 is set. The unified task context is
@@ -633,6 +723,9 @@ _handle_interrupt:
 .section .trap.nmi, "ax"
 .align 4
 nmi_vector:
+.ifdef __hisi_chip_ws53
+    j __ws53_nmi_entry
+.else
     startup_uart_mark 78, 77, 73, 33
     csrci mstatus, 0x08        # Disable interrupts
     save_all
@@ -648,6 +741,7 @@ nmi_vector:
 
     restore_all
     mret
+.endif
 
 
 # ======================================================================
@@ -775,10 +869,18 @@ default_handler:
     startup_uart_mark 68, 70, 72, 33
     j .
 
+.ifdef __hisi_chip_ws53
+# Linker PROVIDE aliases permit Rust overrides in the same LTO unit. A weak
+# assembly definition of the public name conflicts with Rust's global symbol.
+.global __ws53_default_exc_halt
+__ws53_default_exc_halt:
+    j __ws53_default_exc_halt
+.else
 .weak default_exc_handler
 default_exc_handler:
     startup_uart_mark 68, 69, 72, 33
     j .
+.endif
 
 .weak nmi_handler
 nmi_handler:
@@ -833,10 +935,14 @@ __hisi_irq_epilogue_default:
 # prefers a single hook over per-IRQ named symbols.
 .global __hisi_rt_irq_dispatch_default
 __hisi_rt_irq_dispatch_default:
+.ifdef __hisi_chip_ws53
+    li   t0, 90
+.else
 .ifdef __hisi_chip_bs2x
     li   t0, 90                 # BS2X __INTERRUPTS length (IRQ 0..89)
 .else
     li   t0, 73                 # WS63 __INTERRUPTS length (IRQ 0..72)
+.endif
 .endif
     bgeu a0, t0, 1f
     la   t0, __INTERRUPTS
@@ -847,6 +953,7 @@ __hisi_rt_irq_dispatch_default:
 1:
     ret
 
+.ifndef __hisi_chip_ws53
 .weak do_insn_misaligned
 do_insn_misaligned:
     j default_exc_handler
@@ -902,6 +1009,7 @@ do_load_page_fault:
 .weak do_store_page_fault
 do_store_page_fault:
     j default_exc_handler
+.endif
 
 
 # ======================================================================
